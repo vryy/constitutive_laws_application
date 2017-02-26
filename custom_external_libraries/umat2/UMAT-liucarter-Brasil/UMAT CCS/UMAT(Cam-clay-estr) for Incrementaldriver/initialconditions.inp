@@ -1,0 +1,18 @@
+ 6   ntens
+-2000.0   stress(1)    T11
+-2000.0    stress(2)    T22
+-2000.0    stress(3)    T33
+    0.0    stress(4)    T12
+    0.0    stress(5)    T13
+    0.0    stress(ntens) T23    
+	10 nstatv number of state variables
+	1.1d0 statev(1) evoid
+	0 statev(2) Epsilon plastico 11
+	0 statev(3) Epsilon plastico 22
+	0 statev(4) Epsilon plastico 33
+	0 statev(5) Epsilon plastico 12
+	0 statev(6) Epsilon plastico 13
+	0 statev(7) Epsilon plastico 23
+	0 statev(8) pc
+	0 statev(9) de								
+	0 statev(10) py								

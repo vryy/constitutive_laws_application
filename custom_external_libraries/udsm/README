@@ -1,0 +1,50 @@
+! Purpose: User supplied soil model (Example: Drucker-Prager)
+!  Depending on IDTask, 1 : Initialize state variables
+!                       2 : calculate stresses,
+!                       3 : calculate material stiffness matrix
+!                       4 : return number of state variables
+!                       5 : inquire matrix properties
+!                       6 : calculate elastic material stiffness matrix
+!                           return switch for non-symmetric D-matrix
+!                           stress/time dependent matrix
+!
+! Arguments:
+!          I/O  Type
+!  IDTask   I   I    : see above
+!  iMod     I   I    : model number (1..10)
+!  IsUndr   I   I    : =1 for undrained, 0 otherwise
+!  iStep    I   I    : Global step number
+!  iter     I   I    : Global iteration number
+!  iel      I   I    : Global element number
+!  Int      I   I    : Global integration point number
+!  X        I   R    : X-Position of integration point
+!  Y        I   R    : Y-Position of integration point
+!  Z        I   R    : Z-Position of integration point
+!  Time0    I   R    : Time at start of step
+!  dTime    I   R    : Time increment
+!  Props    I   R()  : List with model parameters
+!  Sig0     I   R()  : Stresses at start of step
+!  Swp0     I   R    : Excess pore pressure start of step
+!  StVar0   I   R()  : State variable at start of step
+!  dEps     I   R()  : Strain increment
+!  D       I/O  R(,) : Material stiffness matrix
+!  BulkW   I/O  R    : Bulkmodulus for water (undrained only)
+!  Sig      O   R()  : Resulting stresses
+!  Swp      O   R    : Resulting excess pore pressure
+!  StVar    O   R()  : Resulting values state variables
+!  ipl      O   I    : Plasticity indicator
+!  nStat    O   I    : Number of state variables
+!  NonSym   O   I    : Non-Symmetric D-matrix ?
+!  iStrsDep O   I    : =1 for stress dependent D-matrix
+!  iTimeDep O   I    : =1 for time dependent D-matrix
+!  iTang    O   I    : =1 for tangent D-matrix
+!  iAbort   O   I    : =1 to force stopping of calculation
+!
+! Meanings of ipl: Plasticity indicator:
+!   0 = no plasticity
+!   1 = Mohr-Coulomb (failure) point
+!   2 = Tension cut-off point
+!   3 = Cap hardening point
+!   4 = Cap friction point
+!   5 = Friction hardening point
+

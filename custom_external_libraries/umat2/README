@@ -1,0 +1,17 @@
+Linear Elasticity, Von MIses, Neo-Hookean
++   warp3d
+
+Advanced elasto-plastic models
+    Model for structured clay by Liu and Carter (2002)
+    +   UMAT-liucarter-Brasil
+    Sand model SANISAND by Dafalias and Manzari (2004)
+    +   UMAT-SANISAND-Martinelli
+
+Hypoplastic models
+    von Wolffersdorff (1996) hypoplastic model
+    A hypoplastic model for clays with stiffness anisotropy (Mašín 2013)
+    A hypoplastic model for clays (Mašín 2005)
+    +   plaxis-umat-hypoplas
+
+
+#REF: http://www.soilmodels.info/node8.html

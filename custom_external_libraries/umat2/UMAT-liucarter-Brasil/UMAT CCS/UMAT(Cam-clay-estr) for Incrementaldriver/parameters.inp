@@ -1,0 +1,10 @@
+    camclay                                                                 cmname
+    8          nprops
+    0.2164     props(1)  \Compresion slope
+    0.0136     props(2)  \swelling slope
+    2.4d3      props(3)  \Initial yield stress
+    1.45       props(4)  \M Critic state slope
+    0.13       props(5)  \nu Poisson modulus
+    30.0       props(6)  \b destructuring index
+    3.33       props(7)  \w the effect of additional voids ratio on flow rule
+    0.15       props(8)  \de Additional voids ratio sustained by soil structure 
