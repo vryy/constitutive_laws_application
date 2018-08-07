@@ -145,9 +145,31 @@ Vector& Umat3e::GetValue( const Variable<Vector>& rThisVariable, Vector& rValue 
     }
     if(rThisVariable == STRESSES)
     {
-        if(rValue.size() != mOldStress.size())
-            rValue.resize(mOldStress.size(), false);
-        noalias(rValue) = mOldStress;
+        if(rValue.size() != 6)
+            rValue.resize(6, false);
+
+        if( (mNDI == 3) && (mNSHR == 3) ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
+        {
+            noalias(rValue) = mOldStress;
+        }
+        else if( (mNDI == 2) & (mNSHR == 1) ) // 2D case    [o_xx  o_yy  o_xy]
+        {
+            rValue[0] = mOldStress[0];
+            rValue[1] = mOldStress[1];
+            rValue[2] = 0.0;
+            rValue[3] = mOldStress[2];
+            rValue[4] = 0.0;
+            rValue[5] = 0.0;
+        }
+        else if( (mNDI == 3) & (mNSHR == 1) ) // 2D case, plane strain    [o_xx  o_yy  o_zz  o_xy]
+        {
+            rValue[0] = mOldStress[0];
+            rValue[1] = mOldStress[1];
+            rValue[2] = mOldStressZZ;
+            rValue[3] = mOldStress[2];
+            rValue[4] = 0.0;
+            rValue[5] = 0.0;
+        }
     }
     if(rThisVariable == PRESTRESS || rThisVariable == INSITU_STRESS)
     {
@@ -157,9 +179,31 @@ Vector& Umat3e::GetValue( const Variable<Vector>& rThisVariable, Vector& rValue 
     }
     if(rThisVariable == STRAIN)
     {
-        if(rValue.size() != mOldStrain.size())
-            rValue.resize(mOldStrain.size(), false);
-        noalias(rValue) = mOldStrain;
+        if(rValue.size() != 6)
+            rValue.resize(6, false);
+
+        if( (mNDI == 3) && (mNSHR == 3) ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
+        {
+            noalias(rValue) = mOldStrain;
+        }
+        else if( (mNDI == 2) & (mNSHR == 1) ) // 2D case    [o_xx  o_yy  o_xy]
+        {
+            rValue[0] = mOldStrain[0];
+            rValue[1] = mOldStrain[1];
+            rValue[2] = 0.0; // TODO is it zero?
+            rValue[3] = mOldStrain[2];
+            rValue[4] = 0.0;
+            rValue[5] = 0.0;
+        }
+        else if( (mNDI == 3) & (mNSHR == 1) ) // 2D case, plane strain    [o_xx  o_yy  o_zz  o_xy]
+        {
+            rValue[0] = mOldStrain[0];
+            rValue[1] = mOldStrain[1];
+            rValue[2] = 0.0;
+            rValue[3] = mOldStrain[2];
+            rValue[4] = 0.0;
+            rValue[5] = 0.0;
+        }
     }
     if(rThisVariable == MATERIAL_PARAMETERS)
     {
@@ -560,14 +604,14 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
     {
         mCurrentStateVariables[i] = STATEV[i];
     }
-
+//TODO verify if DDSDDE need to be transpose because of Fortran (!!!!!!IMPORTANT!!!!)
     if( (mNDI == 3) && (mNSHR == 3) ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
     {
         for(int i = 0; i < NTENS; ++i)
         {
             for(int j = 0; j < NTENS; ++j)
             {
-                AlgorithmicTangent(i, j) = DDSDDE[A2K[i]][A2K[j]];
+                AlgorithmicTangent(i, j) = DDSDDE[A2K[j]][A2K[i]];
             }
         }
     }
@@ -577,7 +621,7 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
         {
             for(int j = 0; j < NTENS; ++j)
             {
-                AlgorithmicTangent(i, j) = DDSDDE[i][j];
+                AlgorithmicTangent(i, j) = DDSDDE[j][i];
             }
         }
     }
@@ -587,7 +631,7 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
         {
             for(int j = 0; j < 3; ++j)
             {
-                AlgorithmicTangent(i, j) = DDSDDE[PS[i]][PS[j]];
+                AlgorithmicTangent(i, j) = DDSDDE[PS[j]][PS[i]];
             }
         }
     }
