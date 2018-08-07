@@ -72,7 +72,6 @@ namespace Kratos
 
     class UDSM : public ConstitutiveLaw
     {
-
         public:
             // Counted pointer for UDSM
             KRATOS_CLASS_POINTER_DEFINITION( UDSM );
@@ -174,21 +173,22 @@ namespace Kratos
                                                 const Vector& ShapeFunctionsValues ,
                                                 const ProcessInfo& CurrentProcessInfo );
 
-            virtual void CalculateCauchyStresses( Vector& Cauchy_StressVector,
-                                                  const Matrix& F,
-                                                  const Vector& PK2_StressVector,
-                                                  const Vector& GreenLagrangeStrainVector );
+        protected:
 
-        private:
-
-            Vector mCurrentStrain;              // to store the current strain (for computation of incremental strain)
-            Vector mCurrentStress;              // link with Sig variable
+            Vector mCurrentStrain;              // to store the current strain
+            Vector mLastStrain;                 // to store the converged strain in the last step
+            Vector mCurrentStress;              // link with Sig variable   // this is consitutive stress
+            Vector mLastStress;                 // link with Sig0 variable  // this is consitutive stress
             double mCurrentExcessPorePressure;  // link with Swp variable
+            double mLastExcessPorePressure;     // link with Swp0 variable
             Vector mCurrentStateVariables;      // link with StVar variable
+            Vector mLastStateVariables;         // link with StVar0 variable
             int mPlasticState;                  // link with iPl variable
             int mModelNumber;                   // to choose the soil model number, link with iMod variable
 
+            #ifndef KRATOS_UDSM_LIBRARY_IS_PROVIDED
             void* mp_udsm_handle; // handle to udsm library
+            #endif
             void (*UserMod)(int* IDTask, int* iMod, int* IsUndr, int* iStep, int* iTer, int* iEl,
                             int* Int, double* X, double* Y, double* Z, double* Time0, double* dTime,
                             double* Props, double* Sig0, double* Swp0, double* StVar0, double* dEps,
@@ -211,6 +211,81 @@ namespace Kratos
             }
 
     }; // Class UDSM
+
+
+    class UDSMImplex : public UDSM
+    {
+        public:
+            // Counted pointer for UDSMImplex
+            KRATOS_CLASS_POINTER_DEFINITION( UDSMImplex );
+
+            // Type Definitions
+            typedef UDSM BaseType;
+
+            // Default constructor
+            UDSMImplex() : BaseType() {}
+
+            // Destructor
+            virtual ~UDSMImplex() {}
+
+            // clone
+            virtual ConstitutiveLaw::Pointer Clone() const
+            {
+                ConstitutiveLaw::Pointer p_clone ( new UDSMImplex() );
+                return p_clone;
+            }
+
+            virtual void CalculateMaterialResponse ( const Vector& StrainVector,
+                                                     const Matrix& DeformationGradient,
+                                                     Vector& StressVector,
+                                                     Matrix& AlgorithmicTangent,
+                                                     const ProcessInfo& CurrentProcessInfo,
+                                                     const Properties& props,
+                                                     const GeometryType& geom,
+                                                     const Vector& ShapeFunctionsValues,
+                                                     bool CalculateStresses = true,
+                                                     int CalculateTangent = true,
+                                                     bool SaveInternalVariables = true );
+
+    };
+
+
+    class UDSMImplicit : public UDSM
+    {
+        public:
+            // Counted pointer for UDSMImplicit
+            KRATOS_CLASS_POINTER_DEFINITION( UDSMImplicit );
+
+            // Type Definitions
+            typedef UDSM BaseType;
+
+            // Default constructor
+            UDSMImplicit() : BaseType() {}
+
+            // Destructor
+            virtual ~UDSMImplicit() {}
+
+            // clone
+            virtual ConstitutiveLaw::Pointer Clone() const
+            {
+                ConstitutiveLaw::Pointer p_clone ( new UDSMImplicit() );
+                return p_clone;
+            }
+
+            virtual void CalculateMaterialResponse ( const Vector& StrainVector,
+                                                     const Matrix& DeformationGradient,
+                                                     Vector& StressVector,
+                                                     Matrix& AlgorithmicTangent,
+                                                     const ProcessInfo& CurrentProcessInfo,
+                                                     const Properties& props,
+                                                     const GeometryType& geom,
+                                                     const Vector& ShapeFunctionsValues,
+                                                     bool CalculateStresses = true,
+                                                     int CalculateTangent = true,
+                                                     bool SaveInternalVariables = true );
+
+    };
+
 
 }  // namespace Kratos.
 

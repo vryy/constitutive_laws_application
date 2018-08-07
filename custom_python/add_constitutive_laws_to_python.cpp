@@ -54,8 +54,12 @@ void  AddConstitutiveLawsToPython()
     ( "Umat", init<>() )
     ;
 
-    class_< UDSM, bases< ConstitutiveLawBaseType >, boost::noncopyable >
-    ( "UDSM", init<>() )
+    class_< UDSMImplex, bases< ConstitutiveLawBaseType >, boost::noncopyable >
+    ( "UDSMImplex", init<>() )
+    ;
+
+    class_< UDSMImplicit, bases< ConstitutiveLawBaseType >, boost::noncopyable >
+    ( "UDSMImplicit", init<>() )
     ;
 
     class_< Umat2, bases< ConstitutiveLawBaseType >, boost::noncopyable >
