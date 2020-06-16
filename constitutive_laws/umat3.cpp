@@ -220,6 +220,8 @@ void Umat3::SetValue( const Variable<Vector>& rVariable, const Vector& rValue, c
 {
     if ( rVariable == INSITU_STRESS || rVariable == PRESTRESS )
     {
+        if (mPrestress.size() != rValue.size())
+            mPrestress.resize(rValue.size());
         noalias(mPrestress) = rValue;
     }
     if ( rVariable == UMAT_STATEV )
@@ -241,22 +243,36 @@ void Umat3::InitializeMaterial( const Properties& props,
     int NTENS = NDI + NSHR;
     int NSTATV = props[UMAT_NSTATV];
 
-    mCurrentStress.resize(NTENS);
-    mOldStress.resize(NTENS);
-    mPrestress.resize(NTENS);
-    mCurrentStrain.resize(NTENS);
-    mOldStrain.resize(NTENS);
+    unsigned int strain_size;
+    if (NDI == 3 && NSHR == 3)
+    {
+        strain_size = 6;
+    }
+    else if (NDI == 3 && NSHR == 1)
+    {
+        strain_size = 3;
+    }
+    else if (NDI == 2 && NSHR == 1)
+    {
+        strain_size = 3;
+    }
+
+    mCurrentStress.resize(strain_size);
+    mOldStress.resize(strain_size);
+    mPrestress.resize(strain_size);
+    mCurrentStrain.resize(strain_size);
+    mOldStrain.resize(strain_size);
     mCurrentStateVariables.resize(NSTATV);
     mOldStateVariables.resize(NSTATV);
     mPrestressFactor = 1.0;
     mOldStressZZ = 0.0;
     mCurrentStressZZ = 0.0;
 
-    noalias(mCurrentStress) = ZeroVector(NTENS);
-    noalias(mOldStress) = ZeroVector(NTENS);
-    noalias(mPrestress) = ZeroVector(NTENS);
-    noalias(mCurrentStrain) = ZeroVector(NTENS);
-    noalias(mOldStrain) = ZeroVector(NTENS);
+    noalias(mCurrentStress) = ZeroVector(strain_size);
+    noalias(mOldStress) = ZeroVector(strain_size);
+    noalias(mPrestress) = ZeroVector(strain_size);
+    noalias(mCurrentStrain) = ZeroVector(strain_size);
+    noalias(mOldStrain) = ZeroVector(strain_size);
     noalias(mCurrentStateVariables) = ZeroVector(NSTATV);
     noalias(mOldStateVariables) = ZeroVector(NSTATV);
 
@@ -293,21 +309,45 @@ void Umat3::ResetMaterial( const Properties& props,
                            const GeometryType& geom,
                            const Vector& ShapeFunctionsValues )
 {
-    int NDI = props[UMAT_NDI];
-    int NSHR = props[UMAT_NSHR];
-    int NTENS = NDI + NSHR;
-    int NSTATV = props[UMAT_NSTATV];
+    if (mPrestress.size() == 6)
+    {
+        if (mOldStress.size() == 6)
+        {
+            noalias(mOldStress) = -mPrestressFactor*mPrestress;
+        }
+        else if (mOldStress.size() == 3)
+        {
+            mOldStress[0] = -mPrestressFactor*mPrestress[0];
+            mOldStress[1] = -mPrestressFactor*mPrestress[1];
+            mOldStress[2] = -mPrestressFactor*mPrestress[3];
+            mOldStressZZ = -mPrestressFactor*mPrestress[2];
+        }
+    }
+    else if (mPrestress.size() == 3)
+    {
+        if (mOldStress.size() == 6)
+        {
+            mOldStress[0] = -mPrestressFactor*mPrestress[0];
+            mOldStress[1] = -mPrestressFactor*mPrestress[1];
+            mOldStress[2] = 0.0;
+            mOldStress[3] = -mPrestressFactor*mPrestress[2];
+            mOldStress[4] = 0.0;
+            mOldStress[5] = 0.0;
+            mOldStressZZ = 0.0;
+        }
+        else if (mOldStress.size() == 3)
+        {
+            noalias(mOldStress) = -mPrestressFactor*mPrestress;
+            mOldStressZZ = 0.0;
+        }
+    }
 
-    noalias(mCurrentStress) = ZeroVector(NTENS);
-    noalias(mOldStress) = ZeroVector(NTENS);
-    noalias(mPrestress) = ZeroVector(NTENS);
-    noalias(mCurrentStrain) = ZeroVector(NTENS);
-    noalias(mOldStrain) = ZeroVector(NTENS);
-    noalias(mCurrentStateVariables) = ZeroVector(NSTATV);
-    noalias(mOldStateVariables) = ZeroVector(NSTATV);
-    mPrestressFactor = 1.0;
-    mOldStressZZ = 0.0;
-    mCurrentStressZZ = 0.0;
+    noalias(mCurrentStress) = mOldStress;
+    mCurrentStressZZ = mOldStressZZ;
+    mCurrentStrain.clear();
+    mOldStrain.clear();
+    mCurrentStateVariables.clear();
+    mOldStateVariables.clear();
 }
 
 void Umat3::InitializeSolutionStep( const Properties& props,
@@ -379,7 +419,7 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
         {
             STRAN[i] = StrainVector[i];
             DSTRAN[i] = StrainVector[i] - mOldStrain[i];
-            STRES[i] = mOldStress[i] - mPrestressFactor*mPrestress[i];
+            STRES[i] = mOldStress[i];
             for(int j = 0; j < NTENS; ++j)
                 DDSDDE[i][j] = 0.0;
         }
@@ -390,7 +430,7 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
         {
             STRAN[PS[i]] = StrainVector[i];
             DSTRAN[PS[i]] = StrainVector[i] - mOldStrain[i];
-            STRES[PS[i]] = mOldStress[i] - mPrestressFactor*mPrestress[i];
+            STRES[PS[i]] = mOldStress[i];
         }
         STRAN[2] = 0.0;
         DSTRAN[2] = 0.0;
@@ -482,7 +522,6 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
         mCurrentStressZZ = STRES[2];
     }
 
-    noalias(mCurrentStress) += mPrestressFactor*mPrestress;
     noalias(StressVector) = mCurrentStress; // TODO: take into account the temperature
 
     for(int i = 0; i < NSTATV; ++i)

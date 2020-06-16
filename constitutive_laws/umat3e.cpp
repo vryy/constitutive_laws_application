@@ -12,7 +12,7 @@
 #include "constitutive_laws_application.h"
 #include "includes/ublas_interface.h"
 
-#define DEBUG_UMAT
+// #define DEBUG_UMAT
 #define DEBUG_ELEMENT_ID    1
 #define DEBUG_POINT_ID      0
 
@@ -132,6 +132,79 @@ double& Umat3e::GetValue( const Variable<double>& rThisVariable, double& rValue 
     {
         rValue = mPrestressFactor;
     }
+
+    if ( rThisVariable == EQUIVALENT_VOLUMETRIC_STRAIN )
+    {
+        if (mOldStress.size() == 3)
+            rValue = (mOldStrain[0] + mOldStrain[1]);
+        else if (mOldStress.size() == 6)
+            rValue = (mOldStrain[0] + mOldStrain[1] + mOldStrain[2]);
+    }
+
+    if ( rThisVariable == EQUIVALENT_DEVIATORIC_STRAIN )
+    {
+        // REF: https://dianafea.com/manuals/d944/Analys/node405.html
+        double exx, eyy, ezz, exy, eyz, exz, ev;
+        if (mOldStrain.size() == 3)
+        {
+            ev = (mOldStrain[0] + mOldStrain[1]);
+            exx = mOldStrain[0] - ev/3;
+            eyy = mOldStrain[1] - ev/3;
+            ezz = -ev/3;
+            exy = mOldStrain[2];
+            eyz = 0.0;
+            exz = 0.0;
+        }
+        else if (mOldStrain.size() == 6)
+        {
+            ev = (mOldStrain[0] + mOldStrain[1] + mOldStrain[2]);
+            exx = mOldStrain[0] - ev/3;
+            eyy = mOldStrain[1] - ev/3;
+            ezz = mOldStrain[2] - ev/3;
+            exy = mOldStrain[3];
+            eyz = mOldStrain[4];
+            exz = mOldStrain[5];
+        }
+
+        rValue = (2.0/3) * std::sqrt(1.5*(pow(exx, 2) + pow(eyy, 2) + pow(ezz, 2) + 3*(pow(exy, 2) + pow(eyz, 2) + pow(exz, 2))));
+    }
+
+    if (rThisVariable == PRESSURE_P) // this follows the soil mechanics's hydrostatic pressure convention
+    {
+        if (mOldStress.size() == 3)
+            rValue = -(mOldStress[0] + mOldStress[1] + mOldStressZZ) / 3;
+        else if (mOldStress.size() == 6)
+            rValue = -(mOldStress[0] + mOldStress[1] + mOldStress[2]) / 3;
+    }
+
+    if (rThisVariable == PRESSURE_Q || rThisVariable == VON_MISES_STRESS)
+    {
+        double s00, s11, s22, s01, s12, s02, p;
+        double j2;
+        if (mOldStress.size() == 3)
+        {
+            p = (mOldStress[0] + mOldStress[1] + mOldStressZZ) / 3;
+            s00 = mOldStress[0] - p;
+            s11 = mOldStress[1] - p;
+            s22 = mOldStressZZ - p;
+            s01 = mOldStress[2];
+            s12 = 0.0;
+            s02 = 0.0;
+        }
+        else if (mOldStress.size() == 6)
+        {
+            p = (mOldStress[0] + mOldStress[1] + mOldStress[2]) / 3;
+            s00 = mOldStress[0] - p;
+            s11 = mOldStress[1] - p;
+            s22 = mOldStress[2] - p;
+            s01 = mOldStress[3];
+            s12 = mOldStress[4];
+            s02 = mOldStress[5];
+        }
+        j2 = 0.5*( pow(s00, 2) + pow(s11, 2) + pow(s22, 2) ) + pow(s01, 2) + pow(s12, 2) + pow(s02, 2);
+        rValue = sqrt( 3.0 * j2 );
+    }
+
     return rValue;
 }
 
@@ -230,15 +303,25 @@ std::string& Umat3e::GetValue( const Variable<std::string>& rThisVariable, std::
 void Umat3e::SetValue( const Variable<int>& rVariable, const int& rValue, const ProcessInfo& rCurrentProcessInfo)
 {
     if(rVariable == PARENT_ELEMENT_ID)
+    {
         mElementId = rValue;
-    if(rVariable == INTEGRATION_POINT_INDEX )
+    }
+    if(rVariable == INTEGRATION_POINT_INDEX)
+    {
         mIntPointIndex = rValue;
-    if(rVariable == UMAT_NDI )
+    }
+    if(rVariable == UMAT_NDI)
+    {
         mNDI = rValue;
-    if(rVariable == UMAT_NSHR )
+    }
+    if(rVariable == UMAT_NSHR)
+    {
         mNSHR = rValue;
-    if(rVariable == UMAT_NSTATV )
+    }
+    if(rVariable == UMAT_NSTATV)
+    {
         mNSTATV = rValue;
+    }
 }
 
 void Umat3e::SetValue( const Variable<double>& rVariable, const double& rValue, const ProcessInfo& rCurrentProcessInfo)
@@ -251,12 +334,22 @@ void Umat3e::SetValue( const Variable<Vector>& rVariable, const Vector& rValue, 
 {
     if ( rVariable == INSITU_STRESS || rVariable == PRESTRESS )
     {
-        if(mPrestress.size() != rValue.size())
-            mPrestress.resize(rValue.size(), false);
+        if (mPrestress.size() != rValue.size())
+            mPrestress.resize(rValue.size());
         noalias(mPrestress) = rValue;
+
+        #ifdef DEBUG_UMAT
+        if(mElementId == DEBUG_ELEMENT_ID && mIntPointIndex == DEBUG_POINT_ID)
+        {
+            KRATOS_WATCH(__LINE__)
+            KRATOS_WATCH(rValue)
+            KRATOS_WATCH(mPrestress)
+        }
+        #endif
 
         ResetState(); // WARNING: we must set PRESTRESS_FACTOR before setting PRESTRESS
     }
+
     if ( rVariable == UMAT_STATEV )
     {
         if(mCurrentStateVariables.size() != rValue.size())
@@ -293,49 +386,85 @@ void Umat3e::SetValue( const Variable<std::string>& rVariable, const std::string
     {
         mCMNAME = rValue;
     }
+    if ( rVariable == ABAQUS_LIBRARY_NAME )
+    {
+        mLibName = rValue;
+    }
+    if ( rVariable == UMAT_NAME )
+    {
+        mName = rValue;
+    }
 }
 
 void Umat3e::InitializeMaterial( const Properties& props,
                                const GeometryType& geom,
                                const Vector& ShapeFunctionsValues )
 {
-    mNDI = props[UMAT_NDI];
-    mNSHR = props[UMAT_NSHR];
-    mNSTATV = props[UMAT_NSTATV];
-    mPROPS = props[MATERIAL_PARAMETERS];
-    mCMNAME = props[UMAT_CMNAME];
+    if (props.Has(UMAT_NDI))
+        mNDI = props[UMAT_NDI];
+
+    if (props.Has(UMAT_NSHR))
+        mNSHR = props[UMAT_NSHR];
+
+    if (props.Has(UMAT_NSTATV))
+        mNSTATV = props[UMAT_NSTATV];
+
+    if (props.Has(MATERIAL_PARAMETERS))
+        mPROPS = props[MATERIAL_PARAMETERS];
+
+    if (props.Has(UMAT_NAME))
+        mName = props[UMAT_NAME];
+
+    if (props.Has(UMAT_CMNAME))
+        mCMNAME = props[UMAT_CMNAME];
+
+    if (props.Has(ABAQUS_LIBRARY_NAME))
+        mLibName = props[ABAQUS_LIBRARY_NAME];
+
     int NTENS = mNDI + mNSHR;
 
-    mCurrentStress.resize(NTENS);
-    mOldStress.resize(NTENS);
-    mPrestress.resize(NTENS);
-    mCurrentStrain.resize(NTENS);
-    mOldStrain.resize(NTENS);
+    unsigned int strain_size;
+    if (mNDI == 3 && mNSHR == 3)
+    {
+        strain_size = 6;
+    }
+    else if (mNDI == 3 && mNSHR == 1)
+    {
+        strain_size = 3;
+    }
+    else if (mNDI == 2 && mNSHR == 1)
+    {
+        strain_size = 3;
+    }
+
+    mCurrentStress.resize(strain_size);
+    mOldStress.resize(strain_size);
+    mPrestress.resize(strain_size);
+    mCurrentStrain.resize(strain_size);
+    mOldStrain.resize(strain_size);
     mCurrentStateVariables.resize(mNSTATV);
     mOldStateVariables.resize(mNSTATV);
     mPrestressFactor = 1.0;
     mOldStressZZ = 0.0;
     mCurrentStressZZ = 0.0;
 
-    noalias(mCurrentStress) = ZeroVector(NTENS);
-    noalias(mOldStress) = ZeroVector(NTENS);
-    noalias(mPrestress) = ZeroVector(NTENS);
-    noalias(mCurrentStrain) = ZeroVector(NTENS);
-    noalias(mOldStrain) = ZeroVector(NTENS);
+    noalias(mCurrentStress) = ZeroVector(strain_size);
+    noalias(mOldStress) = ZeroVector(strain_size);
+    noalias(mPrestress) = ZeroVector(strain_size);
+    noalias(mCurrentStrain) = ZeroVector(strain_size);
+    noalias(mOldStrain) = ZeroVector(strain_size);
     noalias(mCurrentStateVariables) = ZeroVector(mNSTATV);
     noalias(mOldStateVariables) = ZeroVector(mNSTATV);
 
     #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
     // get the library name and load the udsm subroutine
-    std::string lib_name = props[ABAQUS_LIBRARY_NAME];
-//    mp_umat_handle = dlopen(lib_name.c_str(), RTLD_LAZY);
-    mp_umat_handle = dlopen(lib_name.c_str(), RTLD_NOW | RTLD_GLOBAL);
+//    mp_umat_handle = dlopen(mLibName.c_str(), RTLD_LAZY);
+    mp_umat_handle = dlopen(mLibName.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if(mp_umat_handle == 0)
     {
-        KRATOS_THROW_ERROR(std::runtime_error, "The Abaqus material library does not exist:", lib_name)
+        KRATOS_THROW_ERROR(std::runtime_error, "The Abaqus material library does not exist:", mLibName)
     }
 
-    std::string umat_name = props[UMAT_NAME];
     char* error;
     Umat = (void (*)(double* STRESS, double* STATEV, double** DDSDDE, double* SSE, double* SPD, double* SCD,
                 double* RPL, double* DDSDDT, double* DRPLDE, double* DRPLDT, double* STRAN, double* DSTRAN,
@@ -343,12 +472,12 @@ void Umat3e::InitializeMaterial( const Properties& props,
                 char* CMNAME, int* NDI, int* NSHR, int* NTENS, int* NSTATV, double* PROPS, int* NPROPS,
                 double* COORDS, double** DROT, double* PNEWDT, double* CELENT, double** DFGRD0,
                 double** DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC))
-           dlsym(mp_umat_handle, umat_name.c_str());
+           dlsym(mp_umat_handle, mName.c_str());
     error = dlerror();
     if(error != NULL)
     {
         std::stringstream ss;
-        ss << "Error loading subroutine " << umat_name << " in the " << lib_name << " library, error message = " << error;
+        ss << "Error loading subroutine " << mName << " in the " << mLibName << " library, error message = " << error;
         KRATOS_THROW_ERROR(std::runtime_error, ss.str(), "")
     }
     #endif
@@ -358,30 +487,37 @@ void Umat3e::ResetMaterial( const Properties& props,
                            const GeometryType& geom,
                            const Vector& ShapeFunctionsValues )
 {
-    int NTENS = mNDI + mNSHR;
+    unsigned int strain_size;
+    if (mNDI == 3 && mNSHR == 3)
+    {
+        strain_size = 6;
+    }
+    else if (mNDI == 3 && mNSHR == 1)
+    {
+        strain_size = 3;
+    }
+    else if (mNDI == 2 && mNSHR == 1)
+    {
+        strain_size = 3;
+    }
 
-    if(mCurrentStress.size() != NTENS)
-        mCurrentStress.resize(NTENS, false);
-    noalias(mCurrentStress) = ZeroVector(NTENS);
-
-    if(mPrestress.size() != NTENS)
-        mPrestress.resize(NTENS, false);
-    noalias(mPrestress) = ZeroVector(NTENS);
-
-    if(mCurrentStrain.size() != NTENS)
-        mCurrentStrain.resize(NTENS, false);
-    noalias(mCurrentStrain) = ZeroVector(NTENS);
+    if(mCurrentStrain.size() != strain_size)
+        mCurrentStrain.resize(strain_size, false);
+    noalias(mCurrentStrain) = ZeroVector(strain_size);
 
     if(mCurrentStateVariables.size() != mNSTATV)
         mCurrentStateVariables.resize(mNSTATV, false);
     noalias(mCurrentStateVariables) = ZeroVector(mNSTATV);
 
-    mPrestressFactor = 1.0;
-    mCurrentStressZZ = 0.0;
-
     #ifdef DEBUG_UMAT
     if(mElementId == DEBUG_ELEMENT_ID && mIntPointIndex == DEBUG_POINT_ID)
+    {
+        std::cout << "Element " << mElementId << ", point " << mIntPointIndex << " at ResetMaterial:" << std::endl;
         KRATOS_WATCH(mPrestress)
+        KRATOS_WATCH(mNDI)
+        KRATOS_WATCH(mNSHR)
+        KRATOS_WATCH(mNSTATV)
+    }
     #endif
 
     ResetState();
@@ -389,22 +525,73 @@ void Umat3e::ResetMaterial( const Properties& props,
 
 void Umat3e::ResetState()
 {
-    int NTENS = mNDI + mNSHR;
+    if (mPrestress.size() == 6)
+    {
+        if (mOldStress.size() == 6)
+        {
+            noalias(mOldStress) = -mPrestressFactor*mPrestress;
+        }
+        else if (mOldStress.size() == 3)
+        {
+            mOldStress[0] = -mPrestressFactor*mPrestress[0];
+            mOldStress[1] = -mPrestressFactor*mPrestress[1];
+            mOldStress[2] = -mPrestressFactor*mPrestress[3];
+            mOldStressZZ = -mPrestressFactor*mPrestress[2];
+        }
+    }
+    else if (mPrestress.size() == 3)
+    {
+        if (mOldStress.size() == 6)
+        {
+            mOldStress[0] = -mPrestressFactor*mPrestress[0];
+            mOldStress[1] = -mPrestressFactor*mPrestress[1];
+            mOldStress[2] = 0.0;
+            mOldStress[3] = -mPrestressFactor*mPrestress[2];
+            mOldStress[4] = 0.0;
+            mOldStress[5] = 0.0;
+            mOldStressZZ = 0.0;
+        }
+        else if (mOldStress.size() == 3)
+        {
+            noalias(mOldStress) = -mPrestressFactor*mPrestress;
+            mOldStressZZ = 0.0;
+        }
+    }
 
-    if(mOldStress.size() != NTENS)
-        mOldStress.resize(NTENS, false);
-//    noalias(mOldStress) = ZeroVector(NTENS);
-    noalias(mOldStress) = -mPrestressFactor*mPrestress;
+    noalias(mCurrentStress) = mOldStress;
+    mCurrentStressZZ = mOldStressZZ;
 
-    mOldStressZZ = 0.0;
+    unsigned int strain_size;
+    if (mNDI == 3 && mNSHR == 3)
+    {
+        strain_size = 6;
+    }
+    else if (mNDI == 3 && mNSHR == 1)
+    {
+        strain_size = 3;
+    }
+    else if (mNDI == 2 && mNSHR == 1)
+    {
+        strain_size = 3;
+    }
 
-    if(mOldStrain.size() != NTENS)
-        mOldStrain.resize(NTENS, false);
-    noalias(mOldStrain) = ZeroVector(NTENS);
+    if(mOldStrain.size() != strain_size)
+        mOldStrain.resize(strain_size, false);
+    noalias(mOldStrain) = ZeroVector(strain_size);
 
     if(mOldStateVariables.size() != mNSTATV)
         mOldStateVariables.resize(mNSTATV, false);
     noalias(mOldStateVariables) = ZeroVector(mNSTATV);
+
+    #ifdef DEBUG_UMAT
+    if(mElementId == DEBUG_ELEMENT_ID && mIntPointIndex == DEBUG_POINT_ID)
+    {
+        std::cout << "Element " << mElementId << ", point " << mIntPointIndex << " at ResetState:" << std::endl;
+        KRATOS_WATCH(mPrestress)
+        KRATOS_WATCH(mOldStress)
+        KRATOS_WATCH(mOldStressZZ)
+    }
+    #endif
 }
 
 void Umat3e::InitializeSolutionStep( const Properties& props,
@@ -433,6 +620,12 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
                                        int CalculateTangent,
                                        bool SaveInternalVariables )
 {
+    if (CalculateStresses && !CalculateTangent)
+    {
+        noalias(StressVector) = mCurrentStress;
+        return;
+    }
+
     int NPROPS = mPROPS.size();
     int NTENS = mNDI + mNSHR;
 
@@ -511,28 +704,7 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
 
     TEMP = 0.0;
     DTEMP = 0.0; // TODO: take into account the temperature
-//if(mElementId == 1)
-//{
-//    KRATOS_WATCH(mCMNAME)
-//    KRATOS_WATCH(mPROPS)
-//    KRATOS_WATCH(StrainVector)
-//    KRATOS_WATCH(mOldStrain)
-//    KRATOS_WATCH(mOldStress)
-//    KRATOS_WATCH(mPrestress)
-//    KRATOS_WATCH(mPrestressFactor)
-//    std::cout << "STRAN:";
-//    for(int i = 0; i < 6; ++i)
-//        std::cout << " " << STRAN[i];
-//    std::cout << std::endl;
-//    std::cout << "DSTRAN:";
-//    for(int i = 0; i < 6; ++i)
-//        std::cout << " " << DSTRAN[i];
-//    std::cout << std::endl;
-//    std::cout << "STRES:";
-//    for(int i = 0; i < 6; ++i)
-//        std::cout << " " << STRES[i];
-//    std::cout << std::endl;
-//}
+
     #ifdef KRATOS_UMAT_LIBRARY_IS_PROVIDED
     umat_( STRES,
           STATEV,
@@ -594,12 +766,10 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
         mCurrentStressZZ = STRES[2];
     }
 
-    noalias(StressVector) = mCurrentStress; // TODO: take into account the temperature
-//if(mElementId == 1)
-//{
-//    KRATOS_WATCH(StressVector)
-//    KRATOS_WATCH("-----------------")
-//}
+    noalias(StressVector) = mCurrentStress;
+
+    // TODO: take into account the temperature
+
     for(int i = 0; i < mNSTATV; ++i)
     {
         mCurrentStateVariables[i] = STATEV[i];

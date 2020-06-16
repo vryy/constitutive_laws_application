@@ -229,6 +229,8 @@ private:
     int mNSHR;
     int mNSTATV;
     Vector mPROPS;
+    std::string mLibName;
+    std::string mName;
     std::string mCMNAME;
 
     #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
