@@ -8,9 +8,10 @@
 #include "includes/variables.h"
 #include "includes/process_info.h"
 #include "includes/properties.h"
+#include "includes/ublas_interface.h"
 #include "geometries/geometry.h"
 #include "constitutive_laws_application.h"
-#include "includes/ublas_interface.h"
+#include "structural_application/structural_application_variables.h"
 
 // #define DEBUG_UMAT
 #define DEBUG_ELEMENT_ID    1

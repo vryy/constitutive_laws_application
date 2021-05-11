@@ -9,8 +9,9 @@
 #include "includes/process_info.h"
 #include "includes/properties.h"
 #include "geometries/geometry.h"
-#include "constitutive_laws_application.h"
 #include "includes/ublas_interface.h"
+#include "constitutive_laws_application.h"
+#include "structural_application/structural_application_variables.h"
 
 namespace Kratos
 {
