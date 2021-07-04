@@ -10,7 +10,6 @@
 #include "includes/properties.h"
 #include "geometries/geometry.h"
 #include "includes/ublas_interface.h"
-#include "constitutive_laws_application.h"
 #include "structural_application/structural_application_variables.h"
 
 namespace Kratos
@@ -23,6 +22,9 @@ typedef Kratos::ConstitutiveLaw::GeometryType GeometryType;
 const int Umat3::A2K[] = {0, 1, 2, 3, 5, 4};
 const int Umat3::K2A[] = {0, 1, 2, 3, 5, 4};
 const int Umat3::PS[]  = {0, 1, 3};
+unsigned long long Umat3::minstances = 0;
+void* Umat3::mp_umat_handle = 0;
+umat_t Umat3::Umat = 0;
 
 #ifdef KRATOS_UMAT_LIBRARY_IS_PROVIDED
 extern "C" void umat_( double* STRESS, double* STATEV, double** DDSDDE, double* SSE, double* SPD, double* SCD,
@@ -34,14 +36,17 @@ extern "C" void umat_( double* STRESS, double* STATEV, double** DDSDDE, double* 
 #endif
 
 Umat3::Umat3()
-{
-}
+{}
 
 Umat3::~Umat3()
 {
     #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
-    if(mp_umat_handle != 0)
+    --minstances;
+    if(minstances == 0)
+    {
         dlclose(mp_umat_handle);
+        std::cout << "Successfully unload the Umat shared library/DLL" << std::endl;
+    }
     #endif
 }
 
@@ -278,31 +283,43 @@ void Umat3::InitializeMaterial( const Properties& props,
     noalias(mOldStateVariables) = ZeroVector(NSTATV);
 
     #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
-    // get the library name and load the udsm subroutine
-    std::string lib_name = props[ABAQUS_LIBRARY_NAME];
-//    mp_umat_handle = dlopen(lib_name.c_str(), RTLD_LAZY);
-    mp_umat_handle = dlopen(lib_name.c_str(), RTLD_NOW | RTLD_GLOBAL);
-    if(mp_umat_handle == 0)
+    if (minstances == 0)
     {
-        KRATOS_THROW_ERROR(std::runtime_error, "The Abaqus material library does not exist:", lib_name)
+        // get the library name and load the udsm subroutine
+        std::string lib_name = props[ABAQUS_LIBRARY_NAME];
+        // mp_umat_handle = dlopen(lib_name.c_str(), RTLD_LAZY);
+        mp_umat_handle = dlopen(lib_name.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        if(mp_umat_handle == 0)
+        {
+            std::stringstream ss;
+            ss << "Error loading Abaqus material library " << lib_name
+               << ", error message: " << dlerror();
+            KRATOS_THROW_ERROR(std::runtime_error, ss.str(), "")
+        }
+
+        std::string umat_name = props[UMAT_NAME];
+        char* error;
+        Umat = (void (*)(double* STRESS, double* STATEV, double** DDSDDE, double* SSE, double* SPD, double* SCD,
+                    double* RPL, double* DDSDDT, double* DRPLDE, double* DRPLDT, double* STRAN, double* DSTRAN,
+                    double* TIME, double* DTIME, double* TEMP, double* DTEMP, double* PREDEF, double* DPRED,
+                    char* CMNAME, int* NDI, int* NSHR, int* NTENS, int* NSTATV, double* PROPS, int* NPROPS,
+                    double* COORDS, double** DROT, double* PNEWDT, double* CELENT, double** DFGRD0,
+                    double** DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC))
+               dlsym(mp_umat_handle, umat_name.c_str());
+        error = dlerror();
+        if(error != NULL)
+        {
+            std::stringstream ss;
+            ss << "Error loading subroutine " << umat_name << " in the " << lib_name << " library, error message = " << error;
+            KRATOS_THROW_ERROR(std::runtime_error, ss.str(), "")
+        }
+        else
+        {
+            std::cout << "Successfully load Umat from " << lib_name << std::endl;
+        }
     }
 
-    std::string umat_name = props[UMAT_NAME];
-    char* error;
-    Umat = (void (*)(double* STRESS, double* STATEV, double** DDSDDE, double* SSE, double* SPD, double* SCD,
-                double* RPL, double* DDSDDT, double* DRPLDE, double* DRPLDT, double* STRAN, double* DSTRAN,
-                double* TIME, double* DTIME, double* TEMP, double* DTEMP, double* PREDEF, double* DPRED,
-                char* CMNAME, int* NDI, int* NSHR, int* NTENS, int* NSTATV, double* PROPS, int* NPROPS,
-                double* COORDS, double** DROT, double* PNEWDT, double* CELENT, double** DFGRD0,
-                double** DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC))
-           dlsym(mp_umat_handle, umat_name.c_str());
-    error = dlerror();
-    if(error != NULL)
-    {
-        std::stringstream ss;
-        ss << "Error loading subroutine " << umat_name << " in the " << lib_name << " library, error message = " << error;
-        KRATOS_THROW_ERROR(std::runtime_error, ss.str(), "")
-    }
+    ++minstances;
     #endif
 }
 
@@ -365,6 +382,24 @@ void Umat3::InitializeNonLinearIteration ( const Properties& props,
 {
 }
 
+void Umat3::CalculateMaterialResponseCauchy( Parameters& parameters )
+{
+    this->CalculateMaterialResponse( parameters.GetStrainVector()
+        , parameters.GetDeformationGradientF()
+        , parameters.GetStressVector()
+        , parameters.GetConstitutiveMatrix()
+        , parameters.GetProcessInfo()
+        , parameters.GetMaterialProperties()
+        , parameters.GetElementGeometry()
+        , parameters.GetShapeFunctionsValues()
+        , parameters.IsSetStressVector()
+        , parameters.IsSetConstitutiveMatrix()
+        , true
+        , parameters.IsSetStrainVector()
+        , parameters.IsSetDeformationGradientF()
+    );
+}
+
 void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
                                        const Matrix& DeformationGradient,
                                        Vector& StressVector,
@@ -377,6 +412,35 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
                                        int CalculateTangent,
                                        bool SaveInternalVariables )
 {
+    this->CalculateMaterialResponse( StrainVector, DeformationGradient,
+            StressVector, AlgorithmicTangent, CurrentProcessInfo, props, geom,
+            ShapeFunctionsValues, CalculateStresses, CalculateTangent,
+            SaveInternalVariables, true, false );
+}
+
+void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
+                                       const Matrix& DeformationGradient,
+                                       Vector& StressVector,
+                                       Matrix& AlgorithmicTangent,
+                                       const ProcessInfo& CurrentProcessInfo,
+                                       const Properties& props,
+                                       const GeometryType& geom,
+                                       const Vector& ShapeFunctionsValues,
+                                       bool CalculateStresses,
+                                       int CalculateTangent,
+                                       bool SaveInternalVariables,
+                                       bool IsSetStrain,
+                                       bool IsSetDeformationGradient )
+{
+    if (CurrentProcessInfo[SET_CALCULATE_REACTION])
+    {
+        if (CalculateStresses)
+        {
+            noalias(StressVector) = mCurrentStress;
+            return;
+        }
+    }
+
     Vector PROPS = props[MATERIAL_PARAMETERS];
     int NPROPS = PROPS.size();
 
@@ -403,50 +467,56 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
     double TEMP, DTEMP;
     int KSTEP, KINC;
 
-    if( (NDI == 3) && (NSHR == 3) ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
+    if (IsSetStrain)
     {
-        for(int i = 0; i < NTENS; ++i)
+        if( (NDI == 3) && (NSHR == 3) ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
         {
-            STRAN[i] = StrainVector[K2A[i]];
-            DSTRAN[i] = StrainVector[K2A[i]] - mOldStrain[K2A[i]];
-            STRES[i] = mOldStress[K2A[i]] - mPrestressFactor*mPrestress[K2A[i]];
-            for(int j = 0; j < NTENS; ++j)
-                DDSDDE[i][j] = 0.0;
+            for(int i = 0; i < NTENS; ++i)
+            {
+                STRAN[i] = StrainVector[K2A[i]];
+                DSTRAN[i] = StrainVector[K2A[i]] - mOldStrain[K2A[i]];
+                STRES[i] = mOldStress[K2A[i]] - mPrestressFactor*mPrestress[K2A[i]];
+                for(int j = 0; j < NTENS; ++j)
+                    DDSDDE[i][j] = 0.0;
+            }
+        }
+        else if( (NDI == 2) & (NSHR == 1) ) // 2D case    [o_xx  o_yy  o_xy]
+        {
+            for(int i = 0; i < NTENS; ++i)
+            {
+                STRAN[i] = StrainVector[i];
+                DSTRAN[i] = StrainVector[i] - mOldStrain[i];
+                STRES[i] = mOldStress[i];
+                for(int j = 0; j < NTENS; ++j)
+                    DDSDDE[i][j] = 0.0;
+            }
+        }
+        else if( (NDI == 3) & (NSHR == 1) ) // 2D case, plane strain    [o_xx  o_yy  o_zz  o_xy]
+        {
+            for(int i = 0; i < 3; ++i)
+            {
+                STRAN[PS[i]] = StrainVector[i];
+                DSTRAN[PS[i]] = StrainVector[i] - mOldStrain[i];
+                STRES[PS[i]] = mOldStress[i];
+            }
+            STRAN[2] = 0.0;
+            DSTRAN[2] = 0.0;
+            for(int i = 0; i < 4; ++i)
+                for(int j = 0; j < 4; ++j)
+                    DDSDDE[i][j] = 0.0;
+            STRES[2] = mOldStressZZ;
         }
     }
-    else if( (NDI == 2) & (NSHR == 1) ) // 2D case    [o_xx  o_yy  o_xy]
-    {
-        for(int i = 0; i < NTENS; ++i)
-        {
-            STRAN[i] = StrainVector[i];
-            DSTRAN[i] = StrainVector[i] - mOldStrain[i];
-            STRES[i] = mOldStress[i];
-            for(int j = 0; j < NTENS; ++j)
-                DDSDDE[i][j] = 0.0;
-        }
-    }
-    else if( (NDI == 3) & (NSHR == 1) ) // 2D case, plane strain    [o_xx  o_yy  o_zz  o_xy]
+
+    if (IsSetDeformationGradient)
     {
         for(int i = 0; i < 3; ++i)
         {
-            STRAN[PS[i]] = StrainVector[i];
-            DSTRAN[PS[i]] = StrainVector[i] - mOldStrain[i];
-            STRES[PS[i]] = mOldStress[i];
-        }
-        STRAN[2] = 0.0;
-        DSTRAN[2] = 0.0;
-        for(int i = 0; i < 4; ++i)
-            for(int j = 0; j < 4; ++j)
-                DDSDDE[i][j] = 0.0;
-        STRES[2] = mOldStressZZ;
-    }
-
-    for(int i = 0; i < 3; ++i)
-    {
-        for(int j = 0; j < 3; ++j)
-        {
-            DFGRD0[i][j] = 0.0;
-            DFGRD1[i][j] = DeformationGradient(i, j);
+            for(int j = 0; j < 3; ++j)
+            {
+                DFGRD0[i][j] = 0.0;
+                DFGRD1[i][j] = DeformationGradient(i, j);
+            }
         }
     }
 

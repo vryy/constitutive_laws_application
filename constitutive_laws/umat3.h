@@ -55,7 +55,6 @@
 // System includes
 
 // External includes
-#include "boost/smart_ptr.hpp"
 
 // Project includes
 #include "includes/define.h"
@@ -63,6 +62,7 @@
 #include "includes/constitutive_law.h"
 #include "includes/serializer.h"
 #include "includes/ublas_interface.h"
+#include "constitutive_laws_application_variables.h"
 
 
 namespace Kratos
@@ -110,74 +110,81 @@ public:
         return 6;
     }
 
-    virtual StrainMeasure GetStrainMeasure()
+    StrainMeasure GetStrainMeasure() final
     {
         return StrainMeasure_Infinitesimal;
     }
 
-    virtual StressMeasure GetStressMeasure()
+    StressMeasure GetStressMeasure() final
     {
         return StressMeasure_PK1;
     }
 
-    virtual bool IsIncremental()
+    bool IsIncremental() final
     {
         return true;
     }
 
-    virtual bool Has ( const Variable<int>& rThisVariable );
+    bool Has ( const Variable<int>& rThisVariable ) final;
 
-    virtual bool Has ( const Variable<double>& rThisVariable );
+    bool Has ( const Variable<double>& rThisVariable ) final;
 
-    virtual bool Has ( const Variable<Vector>& rThisVariable );
+    bool Has ( const Variable<Vector>& rThisVariable ) final;
 
-    virtual bool Has ( const Variable<Matrix>& rThisVariable );
+    bool Has ( const Variable<Matrix>& rThisVariable ) final;
 
-    virtual int& GetValue ( const Variable<int>& rThisVariable, int& rValue );
+    int& GetValue ( const Variable<int>& rThisVariable, int& rValue ) final;
 
-    virtual double& GetValue ( const Variable<double>& rThisVariable, double& rValue );
+    double& GetValue ( const Variable<double>& rThisVariable, double& rValue ) final;
 
-    virtual Vector& GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue );
+    Vector& GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue ) final;
 
-    virtual Matrix& GetValue ( const Variable<Matrix>& rThisVariable, Matrix& rValue );
+    Matrix& GetValue ( const Variable<Matrix>& rThisVariable, Matrix& rValue ) final;
 
-    virtual void SetValue( const Variable<int>& rVariable, const int& rValue, const ProcessInfo& rCurrentProcessInfo);
+    void SetValue( const Variable<int>& rVariable, const int& rValue, const ProcessInfo& rCurrentProcessInfo) final;
 
-    virtual void SetValue( const Variable<double>& rVariable, const double& rValue, const ProcessInfo& rCurrentProcessInfo);
+    void SetValue( const Variable<double>& rVariable, const double& rValue, const ProcessInfo& rCurrentProcessInfo) final;
 
-    virtual void SetValue( const Variable<Vector>& rVariable, const Vector& rValue, const ProcessInfo& rCurrentProcessInfo);
+    void SetValue( const Variable<Vector>& rVariable, const Vector& rValue, const ProcessInfo& rCurrentProcessInfo) final;
 
-    virtual void SetValue( const Variable<Matrix>& rVariable, const Matrix& rValue, const ProcessInfo& rCurrentProcessInfo);
+    void SetValue( const Variable<Matrix>& rVariable, const Matrix& rValue, const ProcessInfo& rCurrentProcessInfo) final;
 
-    virtual bool ValidateInput ( const Properties& props )
+    bool ValidateInput ( const Properties& props ) final
     {
         KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat3::ValidateInput called", "" );
     }
 
-    virtual void InitializeMaterial ( const Properties& props,
-                                      const GeometryType& geom,
-                                      const Vector& ShapeFunctionsValues );
+    void InitializeMaterial ( const Properties& props,
+                              const GeometryType& geom,
+                              const Vector& ShapeFunctionsValues ) final;
 
-    virtual void ResetMaterial ( const Properties& props,
-                                 const GeometryType& geom,
-                                 const Vector& ShapeFunctionsValues );
+    void ResetMaterial ( const Properties& props,
+                         const GeometryType& geom,
+                         const Vector& ShapeFunctionsValues ) final;
 
-    virtual void InitializeSolutionStep ( const Properties& props,
-                                          const GeometryType& geom,
-                                          const Vector& ShapeFunctionsValues ,
-                                          const ProcessInfo& CurrentProcessInfo );
+    void InitializeSolutionStep ( const Properties& props,
+                                  const GeometryType& geom,
+                                  const Vector& ShapeFunctionsValues ,
+                                  const ProcessInfo& CurrentProcessInfo ) final;
 
-    virtual void FinalizeSolutionStep ( const Properties& props,
+    void FinalizeSolutionStep ( const Properties& props,
+                                const GeometryType& geom,
+                                const Vector& ShapeFunctionsValues ,
+                                const ProcessInfo& CurrentProcessInfo ) final;
+
+    void InitializeNonLinearIteration ( const Properties& props,
                                         const GeometryType& geom,
-                                        const Vector& ShapeFunctionsValues ,
-                                        const ProcessInfo& CurrentProcessInfo );
+                                        const Vector& ShapeFunctionsValues,
+                                        const ProcessInfo& CurrentProcessInfo ) final;
 
-    virtual void InitializeNonLinearIteration ( const Properties& props,
-                                                const GeometryType& geom,
-                                                const Vector& ShapeFunctionsValues,
-                                                const ProcessInfo& CurrentProcessInfo );
+    /**
+     * Computes the material response in terms of Cauchy stresses and constitutive tensor
+     * @see Parameters
+     */
+    void CalculateMaterialResponseCauchy( Parameters& parameters ) final;
 
-    virtual void CalculateMaterialResponse ( const Vector& StrainVector,
+    /// DEPRECATED interface
+    void CalculateMaterialResponse ( const Vector& StrainVector,
             const Matrix& DeformationGradient,
             Vector& StressVector,
             Matrix& AlgorithmicTangent,
@@ -189,16 +196,14 @@ public:
             int CalculateTangent = true,
             bool SaveInternalVariables = true );
 
-    virtual void FinalizeNonLinearIteration ( const Properties& props,
-					                          const GeometryType& geom,
-					                          const Vector& ShapeFunctionsValues,
-					                          const ProcessInfo& CurrentProcessInfo );
+    void FinalizeNonLinearIteration ( const Properties& props,
+                                      const GeometryType& geom,
+                                      const Vector& ShapeFunctionsValues,
+                                      const ProcessInfo& CurrentProcessInfo ) final;
 
-    virtual int Check ( const Properties& props,
-                        const GeometryType& geom,
-                        const ProcessInfo& CurrentProcessInfo );
-
-protected:
+    int Check ( const Properties& props,
+                const GeometryType& geom,
+                const ProcessInfo& CurrentProcessInfo ) final;
 
 private:
 
@@ -222,67 +227,40 @@ private:
     int mIntPointIndex;
 
     #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
-    // handle to umat library
-    void* mp_umat_handle;
+    // values to store the instances of this constitutive law
+    static unsigned long long minstances;
 
-    /**
-     * wrapper function for calling the UMAT fortran subroutine
-     * @param STRESS ......... the vector of stresses
-     * @param STATEV ......... the vector of state variables
-     * @param DDSDDE ......... the material tangent
-     * @param SSE ............
-     * @param SPD ............
-     * @param SCD ............
-     * @param RPL ............
-     * @param DDSDDT .........
-     * @param DRPLDE .........
-     * @param DRPLDT .........
-     * @param STRAN .......... the vector of total strains
-     * @param DSTRAN ......... the vector of incremental strains
-     * @param TIME ........... current time
-     * @param DTIME .......... current time increment
-     * @param TEMP ........... current temperature
-     * @param DTEMP .......... current increment of temperature
-     * @param PREDEF .........
-     * @param DPRED ..........
-     * @param CMNAME ......... material name
-     * @param NDI ............ number of direct strain components (3 in 3D)
-     * @param NSHR ........... number if shear strain components (3 in 3D)
-     * @param NTENS .......... number of stress components (6 in 3D)
-     * @param NSTATV ......... number of state variables (size of STATEV)
-     * @param PROPS .......... material parameters
-     * @param NPROPS ......... number of material paramters (size of PROPS)
-     * @param COORDS ......... coordinates of the integration point
-     * @param DROT ........... rotation increment (3, 3)
-     * @param PNEWDT .........
-     * @param CELENT ......... characteristic element length
-     * @param DFGRD0 .........
-     * @param DFGRD1 .........
-     * @param NOEL ........... element number
-     * @param NPT ............ integration point number
-     * @param KSLAY ..........
-     * @param KSPT ...........
-     * @param KSTEP .......... step number
-     * @param KINC ........... increment number
-     */
-    void (*Umat)(double* STRESS, double* STATEV, double** DDSDDE, double* SSE, double* SPD, double* SCD,
-                 double* RPL, double* DDSDDT, double* DRPLDE, double* DRPLDT, double* STRAN, double* DSTRAN,
-                 double* TIME, double* DTIME, double* TEMP, double* DTEMP, double* PREDEF, double* DPRED,
-                 char* CMNAME, int* NDI, int* NSHR, int* NTENS, int* NSTATV, double* PROPS, int* NPROPS,
-                 double* COORDS, double** DROT, double* PNEWDT, double* CELENT, double** DFGRD0,
-                 double** DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC);
+    // handle to Umat library
+    static void* mp_umat_handle;
+
+    // wrapper function for calling the UMAT fortran subroutine
+    static umat_t Umat;
     #endif
+
+    void CalculateMaterialResponse ( const Vector& StrainVector,
+            const Matrix& DeformationGradient,
+            Vector& StressVector,
+            Matrix& AlgorithmicTangent,
+            const ProcessInfo& CurrentProcessInfo,
+            const Properties& props,
+            const GeometryType& geom,
+            const Vector& ShapeFunctionsValues,
+            bool CalculateStresses,
+            int CalculateTangent,
+            bool SaveInternalVariables,
+            bool IsSetStrain,
+            bool IsSetDeformationGradient );
 
     // serialization
     friend class Serializer;
 
-    virtual void save ( Serializer& rSerializer ) const
+    void save ( Serializer& rSerializer ) const final
     {
         rSerializer.save ( "name", "Umat3" );
         KRATOS_SERIALIZE_SAVE_BASE_CLASS ( rSerializer, ConstitutiveLaw )
     }
 
-    virtual void load ( Serializer& rSerializer )
+    void load ( Serializer& rSerializer ) final
     {
         KRATOS_SERIALIZE_LOAD_BASE_CLASS ( rSerializer, ConstitutiveLaw )
     }
@@ -291,5 +269,5 @@ private:
 
 }  // namespace Kratos.
 
-#endif // KRATOS_UMAT3_H_INCLUDED  defined 
+#endif // KRATOS_UMAT3_H_INCLUDED  defined
 
