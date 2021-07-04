@@ -1,6 +1,6 @@
 #include <dlfcn.h>
 #include "udsm.h"
-#include "constitutive_laws_application.h"
+#include "constitutive_laws_application_variables.h"
 #include "structural_application/structural_application_variables.h"
 
 #ifdef KRATOS_UDSM_LIBRARY_IS_PROVIDED

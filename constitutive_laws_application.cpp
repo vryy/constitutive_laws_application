@@ -18,22 +18,10 @@
 #include "includes/define.h"
 #include "includes/variables.h"
 #include "constitutive_laws_application.h"
+#include "constitutive_laws_application_variables.h"
 
 namespace Kratos
 {
-
-KRATOS_CREATE_VARIABLE(std::string, PLAXIS_LIBRARY_NAME)
-KRATOS_CREATE_VARIABLE(std::string, USERMOD_NAME)
-KRATOS_CREATE_VARIABLE(int, SOIL_MODEL_NUMBER)
-KRATOS_CREATE_VARIABLE(bool, IS_UNDRAINED)
-KRATOS_CREATE_VARIABLE(std::string, ABAQUS_LIBRARY_NAME)
-KRATOS_CREATE_VARIABLE(std::string, UMAT_NAME)
-KRATOS_CREATE_VARIABLE(int, UMAT_NDI)
-KRATOS_CREATE_VARIABLE(int, UMAT_NSHR)
-KRATOS_CREATE_VARIABLE(int, UMAT_NSTATV)
-KRATOS_CREATE_VARIABLE(std::string, UMAT_CMNAME)
-KRATOS_CREATE_VARIABLE(Vector, UMAT_STATEV)
-KRATOS_CREATE_VARIABLE(std::string, OPENSEES_MATERIAL_NAME)
 
 KratosConstitutiveLawsApplication::KratosConstitutiveLawsApplication():
     mUmat3e()

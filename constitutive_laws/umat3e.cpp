@@ -10,7 +10,7 @@
 #include "includes/properties.h"
 #include "includes/ublas_interface.h"
 #include "geometries/geometry.h"
-#include "constitutive_laws_application.h"
+#include "constitutive_laws_application_variables.h"
 #include "structural_application/structural_application_variables.h"
 
 // #define DEBUG_UMAT

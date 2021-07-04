@@ -9,6 +9,7 @@ include_directories( ${CMAKE_SOURCE_DIR}/applications/structural_application )
 ## generate variables with the sources
 set( CONSTITUTIVE_LAWS_APPLICATION_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/constitutive_laws_application.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/constitutive_laws_application_variables.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_python/constitutive_laws_python_application.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_python/add_constitutive_laws_to_python.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/constitutive_laws/umat.cpp

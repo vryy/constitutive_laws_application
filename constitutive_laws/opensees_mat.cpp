@@ -1,6 +1,6 @@
 #include <iostream>
 #include "opensees_mat.h"
-#include "constitutive_laws_application.h"
+#include "constitutive_laws_application_variables.h"
 #include "structural_application/structural_application_variables.h"
 
 #include "SRC/material/nD/UWmaterials/DruckerPrager3D.h"
