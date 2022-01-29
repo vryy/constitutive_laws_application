@@ -17,7 +17,7 @@
 // Project includes
 #include "includes/define.h"
 #include "includes/variables.h"
-#include "constitutive_laws_application.h"
+#include "constitutive_laws_application_variables.h"
 
 namespace Kratos
 {
@@ -34,6 +34,7 @@ KRATOS_CREATE_VARIABLE(int, UMAT_NSTATV)
 KRATOS_CREATE_VARIABLE(std::string, UMAT_CMNAME)
 KRATOS_CREATE_VARIABLE(Vector, UMAT_STATEV)
 KRATOS_CREATE_VARIABLE(std::string, OPENSEES_MATERIAL_NAME)
+KRATOS_CREATE_VARIABLE(double, UDSM_RELAXATION_FACTOR)
 
 }  // namespace Kratos.
 

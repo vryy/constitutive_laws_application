@@ -40,6 +40,7 @@ KRATOS_DEFINE_VARIABLE ( int, UMAT_NSTATV )
 KRATOS_DEFINE_VARIABLE ( std::string, UMAT_CMNAME )
 KRATOS_DEFINE_VARIABLE ( Vector, UMAT_STATEV )
 KRATOS_DEFINE_VARIABLE ( std::string, OPENSEES_MATERIAL_NAME )
+KRATOS_DEFINE_VARIABLE ( double, UDSM_RELAXATION_FACTOR )
 
 /**
  * type definition for Umat
@@ -87,6 +88,16 @@ typedef void (*umat_t)(double* STRESS, double* STATEV, double** DDSDDE, double* 
         char* CMNAME, int* NDI, int* NSHR, int* NTENS, int* NSTATV, double* PROPS, int* NPROPS,
         double* COORDS, double** DROT, double* PNEWDT, double* CELENT, double** DFGRD0,
         double** DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC);
+
+/**
+ * type definition for UDSM
+ * */
+typedef void (*udsm_t)(int* IDTask, int* iMod, int* IsUndr, int* iStep, int* iTer, int* iEl,
+        int* Int, double* X, double* Y, double* Z, double* Time0, double* dTime,
+        double* Props, double* Sig0, double* Swp0, double* StVar0, double* dEps,
+        double* D, double* BulkW, double* Sig, double* Swp, double* StVar,
+        int* ipl, int* nStat, int* NonSym, int* iStrsDep, int* iTimeDep,
+        int* iTang, int* iPrjDir, int* iPrjLen, int* iAbort);
 
 }  // namespace Kratos.
 
