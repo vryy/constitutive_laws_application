@@ -55,7 +55,6 @@
 // System includes
 
 // External includes
-#include "boost/smart_ptr.hpp"
 
 // Project includes
 #include "includes/define.h"
@@ -63,6 +62,7 @@
 #include "includes/constitutive_law.h"
 #include "includes/serializer.h"
 #include "includes/ublas_interface.h"
+#include "constitutive_laws_application_variables.h"
 
 /**
     Interface class to incorporate the user-defined soil models from Plaxis to Kratos
@@ -86,99 +86,106 @@ namespace Kratos
             virtual ~UDSM();
 
             // clone
-            virtual BaseType::Pointer Clone() const
+            BaseType::Pointer Clone() const override
             {
                 BaseType::Pointer p_clone ( new UDSM() );
                 return p_clone;
             }
 
-            virtual std::size_t WorkingSpaceDimension()
+            std::size_t WorkingSpaceDimension() override
             {
                 return 3;
             }
 
-            virtual std::size_t GetStrainSize()
+            std::size_t GetStrainSize() override
             {
                 return 6;
             }
 
-            virtual bool Has ( const Variable<double>& rThisVariable );
+            bool Has ( const Variable<double>& rThisVariable ) final;
 
-            virtual bool Has ( const Variable<Vector>& rThisVariable );
+            bool Has ( const Variable<Vector>& rThisVariable ) final;
 
-            virtual double& GetValue ( const Variable<double>& rThisVariable, double& rValue );
+            double& GetValue ( const Variable<double>& rThisVariable, double& rValue ) final;
 
-            virtual Vector& GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue );
+            Vector& GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue ) final;
 
-            virtual void SetValue ( const Variable<int>& rThisVariable, const int& rValue, const ProcessInfo& rCurrentProcessInfo );
+            void SetValue ( const Variable<int>& rThisVariable, const int& rValue, const ProcessInfo& rCurrentProcessInfo ) final;
 
-            virtual void SetValue ( const Variable<Vector>& rThisVariable, const Vector& rValue, const ProcessInfo& rCurrentProcessInfo );
+            void SetValue ( const Variable<Vector>& rThisVariable, const Vector& rValue, const ProcessInfo& rCurrentProcessInfo ) final;
 
-            StrainMeasure GetStrainMeasure()
+            StrainMeasure GetStrainMeasure() final
             {
                 return StrainMeasure_Infinitesimal;
             }
 
-            StressMeasure GetStressMeasure()
+            StressMeasure GetStressMeasure() final
             {
                 return StressMeasure_Cauchy;
             }
 
-            bool IsIncremental()
+            bool IsIncremental() final
             {
                 return true;
             }
 
-            virtual void ResetMaterial ( const Properties& props,
-                                         const GeometryType& geom,
-                                         const Vector& ShapeFunctionsValues );
+            void ResetMaterial ( const Properties& props,
+                                 const GeometryType& geom,
+                                 const Vector& ShapeFunctionsValues ) final;
 
-            virtual int Check ( const Properties& props,
-                                const GeometryType& geom,
-                                const ProcessInfo& CurrentProcessInfo );
+            int Check ( const Properties& props,
+                        const GeometryType& geom,
+                        const ProcessInfo& CurrentProcessInfo ) final;
 
-            virtual void InitializeMaterial ( const Properties& props,
-                                              const GeometryType& geom,
-                                              const Vector& ShapeFunctionsValues );
+            void InitializeMaterial ( const Properties& props,
+                                      const GeometryType& geom,
+                                      const Vector& ShapeFunctionsValues ) final;
 
-            virtual void InitializeSolutionStep ( const Properties& props,
-                                                  const GeometryType& geom,
-                                                  const Vector& ShapeFunctionsValues ,
-                                                  const ProcessInfo& CurrentProcessInfo );
+            void InitializeSolutionStep ( const Properties& props,
+                                          const GeometryType& geom,
+                                          const Vector& ShapeFunctionsValues ,
+                                          const ProcessInfo& CurrentProcessInfo ) final;
 
-            virtual void InitializeNonLinearIteration ( const Properties& props,
-                                                        const GeometryType& geom,
-                                                        const Vector& ShapeFunctionsValues,
-                                                        const ProcessInfo& CurrentProcessInfo );
-
-            virtual void CalculateMaterialResponse ( const Vector& StrainVector,
-                                                     const Matrix& DeformationGradient,
-                                                     Vector& StressVector,
-                                                     Matrix& AlgorithmicTangent,
-                                                     const ProcessInfo& CurrentProcessInfo,
-                                                     const Properties& props,
-                                                     const GeometryType& geom,
-                                                     const Vector& ShapeFunctionsValues,
-                                                     bool CalculateStresses = true,
-                                                     int CalculateTangent = true,
-                                                     bool SaveInternalVariables = true );
-
-            virtual void FinalizeNonLinearIteration ( const Properties& props,
-					                                  const GeometryType& geom,
-					                                  const Vector& ShapeFunctionsValues,
-					                                  const ProcessInfo& CurrentProcessInfo );
-
-            virtual void FinalizeSolutionStep ( const Properties& props,
+            void InitializeNonLinearIteration ( const Properties& props,
                                                 const GeometryType& geom,
-                                                const Vector& ShapeFunctionsValues ,
-                                                const ProcessInfo& CurrentProcessInfo );
+                                                const Vector& ShapeFunctionsValues,
+                                                const ProcessInfo& CurrentProcessInfo ) final;
+
+            /**
+             * Computes the material response in terms of Cauchy stresses and constitutive tensor
+             * @see Parameters
+             */
+            void CalculateMaterialResponseCauchy( Parameters& parameters ) final;
+
+            /// DEPRECATED interface
+            void CalculateMaterialResponse ( const Vector& StrainVector,
+                                             const Matrix& DeformationGradient,
+                                             Vector& StressVector,
+                                             Matrix& AlgorithmicTangent,
+                                             const ProcessInfo& CurrentProcessInfo,
+                                             const Properties& props,
+                                             const GeometryType& geom,
+                                             const Vector& ShapeFunctionsValues,
+                                             bool CalculateStresses = true,
+                                             int CalculateTangent = true,
+                                             bool SaveInternalVariables = true ) override;
+
+            void FinalizeNonLinearIteration ( const Properties& props,
+                                              const GeometryType& geom,
+                                              const Vector& ShapeFunctionsValues,
+                                              const ProcessInfo& CurrentProcessInfo ) final;
+
+            void FinalizeSolutionStep ( const Properties& props,
+                                        const GeometryType& geom,
+                                        const Vector& ShapeFunctionsValues ,
+                                        const ProcessInfo& CurrentProcessInfo ) final;
 
         protected:
 
             Vector mCurrentStrain;              // to store the current strain
             Vector mLastStrain;                 // to store the converged strain in the last step
-            Vector mCurrentStress;              // link with Sig variable   // this is consitutive stress
-            Vector mLastStress;                 // link with Sig0 variable  // this is consitutive stress
+            Vector mCurrentStress;              // link with Sig variable   // this is constitutive stress
+            Vector mLastStress;                 // link with Sig0 variable  // this is constitutive stress
             double mCurrentExcessPorePressure;  // link with Swp variable
             double mLastExcessPorePressure;     // link with Swp0 variable
             Vector mCurrentStateVariables;      // link with StVar variable
@@ -187,14 +194,12 @@ namespace Kratos
             int mModelNumber;                   // to choose the soil model number, link with iMod variable
 
             #ifndef KRATOS_UDSM_LIBRARY_IS_PROVIDED
-            void* mp_udsm_handle; // handle to udsm library
+            static unsigned long long minstances; // values to store the instances of this constitutive law
+            static void* mp_udsm_handle; // handle to udsm library
+            static udsm_t UserMod;
+            #else
+            udsm_t UserMod;
             #endif
-            void (*UserMod)(int* IDTask, int* iMod, int* IsUndr, int* iStep, int* iTer, int* iEl,
-                            int* Int, double* X, double* Y, double* Z, double* Time0, double* dTime,
-                            double* Props, double* Sig0, double* Swp0, double* StVar0, double* dEps,
-                            double* D, double* BulkW, double* Sig, double* Swp, double* StVar,
-                            int* ipl, int* nStat, int* NonSym, int* iStrsDep, int* iTimeDep,
-                            int* iTang, int* iAbort);
 
             //serialization
             friend class Serializer;
@@ -210,8 +215,10 @@ namespace Kratos
                 KRATOS_SERIALIZE_LOAD_BASE_CLASS ( rSerializer, ConstitutiveLaw )
             }
 
+            void VectorTo3DVector(const Vector& vector, Vector& vector_3d) const;
+            void Vector3DToVector(const Vector& vector_3d, Vector& vector) const;
+            void Vector1DToMatrix(const Vector& D, Matrix& A, const int& non_sym) const;
     }; // Class UDSM
-
 
     class UDSMImplex : public UDSM
     {
@@ -229,26 +236,24 @@ namespace Kratos
             virtual ~UDSMImplex() {}
 
             // clone
-            virtual ConstitutiveLaw::Pointer Clone() const
+            ConstitutiveLaw::Pointer Clone() const final
             {
                 ConstitutiveLaw::Pointer p_clone ( new UDSMImplex() );
                 return p_clone;
             }
 
-            virtual void CalculateMaterialResponse ( const Vector& StrainVector,
-                                                     const Matrix& DeformationGradient,
-                                                     Vector& StressVector,
-                                                     Matrix& AlgorithmicTangent,
-                                                     const ProcessInfo& CurrentProcessInfo,
-                                                     const Properties& props,
-                                                     const GeometryType& geom,
-                                                     const Vector& ShapeFunctionsValues,
-                                                     bool CalculateStresses = true,
-                                                     int CalculateTangent = true,
-                                                     bool SaveInternalVariables = true );
-
+            void CalculateMaterialResponse ( const Vector& StrainVector,
+                                             const Matrix& DeformationGradient,
+                                             Vector& StressVector,
+                                             Matrix& AlgorithmicTangent,
+                                             const ProcessInfo& CurrentProcessInfo,
+                                             const Properties& props,
+                                             const GeometryType& geom,
+                                             const Vector& ShapeFunctionsValues,
+                                             bool CalculateStresses = true,
+                                             int CalculateTangent = true,
+                                             bool SaveInternalVariables = true ) final;
     };
-
 
     class UDSMImplicit : public UDSM
     {
@@ -266,28 +271,26 @@ namespace Kratos
             virtual ~UDSMImplicit() {}
 
             // clone
-            virtual ConstitutiveLaw::Pointer Clone() const
+            ConstitutiveLaw::Pointer Clone() const final
             {
                 ConstitutiveLaw::Pointer p_clone ( new UDSMImplicit() );
                 return p_clone;
             }
 
-            virtual void CalculateMaterialResponse ( const Vector& StrainVector,
-                                                     const Matrix& DeformationGradient,
-                                                     Vector& StressVector,
-                                                     Matrix& AlgorithmicTangent,
-                                                     const ProcessInfo& CurrentProcessInfo,
-                                                     const Properties& props,
-                                                     const GeometryType& geom,
-                                                     const Vector& ShapeFunctionsValues,
-                                                     bool CalculateStresses = true,
-                                                     int CalculateTangent = true,
-                                                     bool SaveInternalVariables = true );
-
+            void CalculateMaterialResponse ( const Vector& StrainVector,
+                                             const Matrix& DeformationGradient,
+                                             Vector& StressVector,
+                                             Matrix& AlgorithmicTangent,
+                                             const ProcessInfo& CurrentProcessInfo,
+                                             const Properties& props,
+                                             const GeometryType& geom,
+                                             const Vector& ShapeFunctionsValues,
+                                             bool CalculateStresses = true,
+                                             int CalculateTangent = true,
+                                             bool SaveInternalVariables = true ) final;
     };
-
 
 }  // namespace Kratos.
 
-#endif // KRATOS_UDSM_H_INCLUDED  defined 
+#endif // KRATOS_UDSM_H_INCLUDED  defined
 
