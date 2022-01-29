@@ -22,9 +22,11 @@ typedef Kratos::ConstitutiveLaw::GeometryType GeometryType;
 const int Umat3::A2K[] = {0, 1, 2, 3, 5, 4};
 const int Umat3::K2A[] = {0, 1, 2, 3, 5, 4};
 const int Umat3::PS[]  = {0, 1, 3};
+#ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
 unsigned long long Umat3::minstances = 0;
 void* Umat3::mp_umat_handle = 0;
 umat_t Umat3::Umat = 0;
+#endif
 
 #ifdef KRATOS_UMAT_LIBRARY_IS_PROVIDED
 extern "C" void umat_( double* STRESS, double* STATEV, double** DDSDDE, double* SSE, double* SPD, double* SCD,
@@ -299,13 +301,7 @@ void Umat3::InitializeMaterial( const Properties& props,
 
         std::string umat_name = props[UMAT_NAME];
         char* error;
-        Umat = (void (*)(double* STRESS, double* STATEV, double** DDSDDE, double* SSE, double* SPD, double* SCD,
-                    double* RPL, double* DDSDDT, double* DRPLDE, double* DRPLDT, double* STRAN, double* DSTRAN,
-                    double* TIME, double* DTIME, double* TEMP, double* DTEMP, double* PREDEF, double* DPRED,
-                    char* CMNAME, int* NDI, int* NSHR, int* NTENS, int* NSTATV, double* PROPS, int* NPROPS,
-                    double* COORDS, double** DROT, double* PNEWDT, double* CELENT, double** DFGRD0,
-                    double** DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC))
-               dlsym(mp_umat_handle, umat_name.c_str());
+        Umat = (umat_t) dlsym(mp_umat_handle, umat_name.c_str());
         error = dlerror();
         if(error != NULL)
         {
@@ -568,6 +564,7 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
           &KSTEP, &KINC );
     #endif
 
+    // KRATOS_WATCH(StrainVector)
     noalias(mCurrentStrain) = StrainVector;
 
     if(NDI == 3 && NSHR == 3)
@@ -632,6 +629,9 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
     }
 //    KRATOS_WATCH(AlgorithmicTangent)
     // TODO: export the variable SSE, SPD, SCD, RPL
+
+    // KRATOS_WATCH(StressVector)
+    // KRATOS_WATCH(AlgorithmicTangent)
 }
 
 void Umat3::FinalizeNonLinearIteration ( const Properties& props,
