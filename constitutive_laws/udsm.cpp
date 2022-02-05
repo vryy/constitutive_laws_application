@@ -384,6 +384,11 @@ void UDSMImplex::CalculateMaterialResponse ( const Vector& StrainVector,
     int iPrjDir, iPrjLen; // can use this for debugging purpose (TODO)
     int nStat = mCurrentStateVariables.size();
 
+    if (IsUndr)
+    {
+        BulkW = props[BULK_W];
+    }
+
     // compute the vector of previous effective stress component
     Vector Sig0(20);
     noalias(Sig0) = ZeroVector(20);
@@ -592,6 +597,11 @@ void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
     double dummyX, dummyY, dummyZ;
     int dummy_iStep=0, dummy_iTer=0, dummy_Iel=0, dummy_Int=0;
 
+    if (IsUndr)
+    {
+        BulkW = props[BULK_W];
+    }
+
     // compute the vector of previous effective stress component
     Vector Sig0(20);
     noalias(Sig0) = ZeroVector(20);
@@ -741,8 +751,11 @@ void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
         // TODO add the bulk stiffness of water to the material stiffness matrix
     }
 
-    // export the stress
-    this->Vector3DToVector(mCurrentStress, StressVector);
+    if (CalculateStresses)
+    {
+        // export the stress
+        this->Vector3DToVector(mCurrentStress, StressVector);
+    }
 
     // obtain the stiffness matrix properties
     IDTask = 5;
@@ -776,7 +789,10 @@ void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
              &iPrjLen,
              &iAbort );
 
-    this->Vector1DToMatrix(D, AlgorithmicTangent, NonSym);
+    if (CalculateTangent)
+    {
+        this->Vector1DToMatrix(D, AlgorithmicTangent, NonSym);
+    }
 
 //    if(mPlasticState)
 //    {
