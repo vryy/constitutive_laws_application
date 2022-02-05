@@ -25,10 +25,8 @@
 namespace Kratos
 {
 
-KRATOS_DEFINE_VARIABLE ( Vector, COORDINATES )
-KRATOS_DEFINE_VARIABLE ( Vector, STRESSES )
-KRATOS_DEFINE_VARIABLE ( Vector, FLUID_FLOWS )
 KRATOS_DEFINE_VARIABLE ( bool,   IS_UNDRAINED )
+KRATOS_DEFINE_VARIABLE ( double, BULK_W ) // we should use BULK_WATER, but it requires SoilMechanicsApplication. To make this application independent, BULK_W is used.
 KRATOS_DEFINE_VARIABLE ( std::string, PLAXIS_LIBRARY_NAME )
 KRATOS_DEFINE_VARIABLE ( std::string, ABAQUS_LIBRARY_NAME )
 KRATOS_DEFINE_VARIABLE ( std::string, USERMOD_NAME )
