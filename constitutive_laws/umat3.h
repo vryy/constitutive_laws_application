@@ -226,6 +226,9 @@ private:
     int mElementId;
     int mIntPointIndex;
 
+    std::size_t mStep;  // step counter
+    int mIncrement;     // increment counter
+
     #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
     // values to store the instances of this constitutive law
     static unsigned long long minstances;

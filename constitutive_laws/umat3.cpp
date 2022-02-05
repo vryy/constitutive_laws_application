@@ -284,6 +284,9 @@ void Umat3::InitializeMaterial( const Properties& props,
     noalias(mCurrentStateVariables) = ZeroVector(NSTATV);
     noalias(mOldStateVariables) = ZeroVector(NSTATV);
 
+    mStep = 0;
+    mIncrement = 0;
+
     #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
     if (minstances == 0)
     {
@@ -369,6 +372,8 @@ void Umat3::InitializeSolutionStep( const Properties& props,
                                     const Vector& ShapeFunctionsValues ,
                                     const ProcessInfo& CurrentProcessInfo )
 {
+    ++mStep;
+    mIncrement = 0;
 }
 
 void Umat3::InitializeNonLinearIteration ( const Properties& props,
@@ -376,6 +381,7 @@ void Umat3::InitializeNonLinearIteration ( const Properties& props,
                                            const Vector& ShapeFunctionsValues,
                                            const ProcessInfo& CurrentProcessInfo )
 {
+    ++mIncrement;
 }
 
 void Umat3::CalculateMaterialResponseCauchy( Parameters& parameters )
@@ -457,11 +463,12 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
     double DRPLDT[NTENS];
     double DFGRD0[3][3];
     double DFGRD1[3][3];
+    double DROT[3][3];
     double TIM[2];
     double DTIM;
     double SSE, SPD, SCD, RPL;
     double TEMP, DTEMP;
-    int KSTEP, KINC;
+    int KSTEP = (int) mStep, KINC = (int) mIncrement;
 
     if (IsSetStrain)
     {
@@ -528,6 +535,11 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
     TEMP = 0.0;
     DTEMP = 0.0; // TODO: take into account the temperature
 
+    // identity rotation matrix
+    DROT[0][0] = 1.0; DROT[0][1] = 0.0; DROT[0][2] = 0.0;
+    DROT[1][0] = 0.0; DROT[1][1] = 1.0; DROT[1][2] = 0.0;
+    DROT[2][0] = 0.0; DROT[2][1] = 0.0; DROT[2][2] = 1.0;
+
     #ifdef KRATOS_UMAT_LIBRARY_IS_PROVIDED
     umat_( STRES,
           STATEV,
@@ -540,7 +552,9 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
           NULL, NULL,
           cmname,
           &NDI, &NSHR, &NTENS, &NSTATV, &PROPS[0], &NPROPS,
-          NULL, NULL, NULL, NULL,
+          NULL,
+          (double**) DROT,
+          NULL, NULL,
           (double**)DFGRD0, (double**)DFGRD1,
           &mElementId, &mIntPointIndex,
           NULL, NULL,
@@ -557,7 +571,9 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
           NULL, NULL,
           cmname,
           &NDI, &NSHR, &NTENS, &NSTATV, &PROPS[0], &NPROPS,
-          NULL, NULL, NULL, NULL,
+          NULL,
+          (double**) DROT,
+          NULL, NULL,
           (double**)DFGRD0, (double**)DFGRD1,
           &mElementId, &mIntPointIndex,
           NULL, NULL,
@@ -590,45 +606,49 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
         mCurrentStressZZ = STRES[2];
     }
 
-    noalias(StressVector) = mCurrentStress; // TODO: take into account the temperature
+    if(CalculateStresses)
+        noalias(StressVector) = mCurrentStress; // TODO: take into account the temperature
 
     for(int i = 0; i < NSTATV; ++i)
     {
         mCurrentStateVariables[i] = STATEV[i];
     }
 
-    if( (NDI == 3) && (NSHR == 3) ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
+    if (CalculateTangent)
     {
-        for(int i = 0; i < NTENS; ++i)
+        if( (NDI == 3) && (NSHR == 3) ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
         {
-            for(int j = 0; j < NTENS; ++j)
+            for(int i = 0; i < NTENS; ++i)
             {
-                AlgorithmicTangent(i, j) = DDSDDE[A2K[j]][A2K[i]];
+                for(int j = 0; j < NTENS; ++j)
+                {
+                    AlgorithmicTangent(i, j) = DDSDDE[A2K[j]][A2K[i]];
+                }
             }
         }
-    }
-    else if( (NDI == 2) && (NSHR == 1) ) // 2D case    [o_xx  o_yy  o_xy]
-    {
-        for(int i = 0; i < NTENS; ++i)
+        else if( (NDI == 2) && (NSHR == 1) ) // 2D case    [o_xx  o_yy  o_xy]
         {
-            for(int j = 0; j < NTENS; ++j)
+            for(int i = 0; i < NTENS; ++i)
             {
-                AlgorithmicTangent(i, j) = DDSDDE[j][i];
+                for(int j = 0; j < NTENS; ++j)
+                {
+                    AlgorithmicTangent(i, j) = DDSDDE[j][i];
+                }
             }
         }
-    }
-    else if( (NDI == 3) && (NSHR == 1) ) // 2D case    [o_xx  o_yy  o_zz  o_xy]
-    {
-        for(int i = 0; i < 3; ++i)
+        else if( (NDI == 3) && (NSHR == 1) ) // 2D case    [o_xx  o_yy  o_zz  o_xy]
         {
-            for(int j = 0; j < 3; ++j)
+            for(int i = 0; i < 3; ++i)
             {
-                AlgorithmicTangent(i, j) = DDSDDE[PS[j]][PS[i]];
+                for(int j = 0; j < 3; ++j)
+                {
+                    AlgorithmicTangent(i, j) = DDSDDE[PS[j]][PS[i]];
+                }
             }
         }
+    //    KRATOS_WATCH(AlgorithmicTangent)
+        // TODO: export the variable SSE, SPD, SCD, RPL
     }
-//    KRATOS_WATCH(AlgorithmicTangent)
-    // TODO: export the variable SSE, SPD, SCD, RPL
 
     // KRATOS_WATCH(StressVector)
     // KRATOS_WATCH(AlgorithmicTangent)
