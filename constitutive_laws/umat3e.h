@@ -95,7 +95,7 @@ public:
     virtual ~Umat3e();
 
     //clone
-    virtual BaseType::Pointer Clone() const
+    BaseType::Pointer Clone() const final
     {
         BaseType::Pointer p_clone ( new Umat3e() );
         return p_clone;
@@ -111,78 +111,78 @@ public:
         return 6;
     }
 
-    virtual StrainMeasure GetStrainMeasure()
+    StrainMeasure GetStrainMeasure() final
     {
         return StrainMeasure_Infinitesimal;
     }
 
-    virtual StressMeasure GetStressMeasure()
+    StressMeasure GetStressMeasure() final
     {
         return StressMeasure_PK1;
     }
 
-    virtual bool IsIncremental()
+    bool IsIncremental() final
     {
         return true;
     }
 
-    virtual bool Has ( const Variable<int>& rThisVariable );
+    bool Has ( const Variable<int>& rThisVariable ) final;
 
-    virtual bool Has ( const Variable<double>& rThisVariable );
+    bool Has ( const Variable<double>& rThisVariable ) final;
 
-    virtual bool Has ( const Variable<Vector>& rThisVariable );
+    bool Has ( const Variable<Vector>& rThisVariable ) final;
 
-    virtual bool Has ( const Variable<Matrix>& rThisVariable );
+    bool Has ( const Variable<Matrix>& rThisVariable ) final;
 
-    virtual int& GetValue ( const Variable<int>& rThisVariable, int& rValue );
+    int& GetValue ( const Variable<int>& rThisVariable, int& rValue ) final;
 
-    virtual double& GetValue ( const Variable<double>& rThisVariable, double& rValue );
+    double& GetValue ( const Variable<double>& rThisVariable, double& rValue ) final;
 
-    virtual Vector& GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue );
+    Vector& GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue ) final;
 
-    virtual Matrix& GetValue ( const Variable<Matrix>& rThisVariable, Matrix& rValue );
+    Matrix& GetValue ( const Variable<Matrix>& rThisVariable, Matrix& rValue ) final;
 
-    virtual std::string& GetValue ( const Variable<std::string>& rThisVariable, std::string& rValue );
+    std::string& GetValue ( const Variable<std::string>& rThisVariable, std::string& rValue ) final;
 
-    virtual void SetValue( const Variable<int>& rVariable, const int& rValue, const ProcessInfo& rCurrentProcessInfo);
+    void SetValue( const Variable<int>& rVariable, const int& rValue, const ProcessInfo& rCurrentProcessInfo) final;
 
-    virtual void SetValue( const Variable<double>& rVariable, const double& rValue, const ProcessInfo& rCurrentProcessInfo);
+    void SetValue( const Variable<double>& rVariable, const double& rValue, const ProcessInfo& rCurrentProcessInfo) final;
 
-    virtual void SetValue( const Variable<Vector>& rVariable, const Vector& rValue, const ProcessInfo& rCurrentProcessInfo);
+    void SetValue( const Variable<Vector>& rVariable, const Vector& rValue, const ProcessInfo& rCurrentProcessInfo) final;
 
-    virtual void SetValue( const Variable<Matrix>& rVariable, const Matrix& rValue, const ProcessInfo& rCurrentProcessInfo);
+    void SetValue( const Variable<Matrix>& rVariable, const Matrix& rValue, const ProcessInfo& rCurrentProcessInfo) final;
 
-    virtual void SetValue( const Variable<std::string>& rVariable, const std::string& rValue, const ProcessInfo& rCurrentProcessInfo);
+    void SetValue( const Variable<std::string>& rVariable, const std::string& rValue, const ProcessInfo& rCurrentProcessInfo) final;
 
     virtual bool ValidateInput ( const Properties& props )
     {
         KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat3e::ValidateInput called", "" );
     }
 
-    virtual void InitializeMaterial ( const Properties& props,
-                                      const GeometryType& geom,
-                                      const Vector& ShapeFunctionsValues );
+    void InitializeMaterial ( const Properties& props,
+                              const GeometryType& geom,
+                              const Vector& ShapeFunctionsValues ) final;
 
-    virtual void ResetMaterial ( const Properties& props,
-                                 const GeometryType& geom,
-                                 const Vector& ShapeFunctionsValues );
+    void ResetMaterial ( const Properties& props,
+                         const GeometryType& geom,
+                         const Vector& ShapeFunctionsValues ) final;
 
-    virtual void InitializeSolutionStep ( const Properties& props,
-                                          const GeometryType& geom,
-                                          const Vector& ShapeFunctionsValues ,
-                                          const ProcessInfo& CurrentProcessInfo );
+    void InitializeSolutionStep ( const Properties& props,
+                                  const GeometryType& geom,
+                                  const Vector& ShapeFunctionsValues ,
+                                  const ProcessInfo& CurrentProcessInfo ) final;
 
-    virtual void FinalizeSolutionStep ( const Properties& props,
+    void FinalizeSolutionStep ( const Properties& props,
+                                const GeometryType& geom,
+                                const Vector& ShapeFunctionsValues ,
+                                const ProcessInfo& CurrentProcessInfo ) final;
+
+    void InitializeNonLinearIteration ( const Properties& props,
                                         const GeometryType& geom,
-                                        const Vector& ShapeFunctionsValues ,
-                                        const ProcessInfo& CurrentProcessInfo );
+                                        const Vector& ShapeFunctionsValues,
+                                        const ProcessInfo& CurrentProcessInfo ) final;
 
-    virtual void InitializeNonLinearIteration ( const Properties& props,
-                                                const GeometryType& geom,
-                                                const Vector& ShapeFunctionsValues,
-                                                const ProcessInfo& CurrentProcessInfo );
-
-    virtual void CalculateMaterialResponse ( const Vector& StrainVector,
+    void CalculateMaterialResponse ( const Vector& StrainVector,
             const Matrix& DeformationGradient,
             Vector& StressVector,
             Matrix& AlgorithmicTangent,
@@ -192,16 +192,16 @@ public:
             const Vector& ShapeFunctionsValues,
             bool CalculateStresses = true,
             int CalculateTangent = true,
-            bool SaveInternalVariables = true );
+            bool SaveInternalVariables = true ) final;
 
-    virtual void FinalizeNonLinearIteration ( const Properties& props,
-					                          const GeometryType& geom,
-					                          const Vector& ShapeFunctionsValues,
-					                          const ProcessInfo& CurrentProcessInfo );
+    void FinalizeNonLinearIteration ( const Properties& props,
+                                      const GeometryType& geom,
+                                      const Vector& ShapeFunctionsValues,
+                                      const ProcessInfo& CurrentProcessInfo ) final;
 
-    virtual int Check ( const Properties& props,
-                        const GeometryType& geom,
-                        const ProcessInfo& CurrentProcessInfo );
+    int Check ( const Properties& props,
+                const GeometryType& geom,
+                const ProcessInfo& CurrentProcessInfo ) final;
 
 protected:
 
@@ -291,7 +291,7 @@ private:
     // serialization
     friend class Serializer;
 
-    virtual void save ( Serializer& rSerializer ) const
+    void save ( Serializer& rSerializer ) const override
     {
         KRATOS_SERIALIZE_SAVE_BASE_CLASS ( rSerializer, ConstitutiveLaw )
         rSerializer.save("mCurrentStrain", mCurrentStrain);
@@ -314,7 +314,7 @@ private:
         rSerializer.save("mCMNAME", mCMNAME);
     }
 
-    virtual void load ( Serializer& rSerializer )
+    void load ( Serializer& rSerializer ) override
     {
         KRATOS_SERIALIZE_LOAD_BASE_CLASS ( rSerializer, ConstitutiveLaw )
         rSerializer.load("mCurrentStrain", mCurrentStrain);
@@ -341,5 +341,5 @@ private:
 
 }  // namespace Kratos.
 
-#endif // KRATOS_Umat3e_H_INCLUDED  defined 
+#endif // KRATOS_Umat3e_H_INCLUDED  defined
 
