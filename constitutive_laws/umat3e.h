@@ -63,6 +63,7 @@
 #include "includes/constitutive_law.h"
 #include "includes/serializer.h"
 #include "includes/ublas_interface.h"
+#include "constitutive_laws_application_variables.h"
 
 
 namespace Kratos
@@ -71,16 +72,12 @@ namespace Kratos
 /**
 Umat interface KRATOS-ABAQUS
 THis interface will call respective Umat version depending on the parameters given. Therefore Umat must implement both 2D and 3D.
-This version of Umat is the same as Umat3 but is customized for ekate
+This version of Umat is the same as Umat3 but is customized for ekate, where the material parameters are read from matfile
 */
 class Umat3e : public ConstitutiveLaw
 {
 
 public:
-
-    static const int A2K[];
-    static const int K2A[];
-    static const int PS[];
 
     // Counted pointer definition
     KRATOS_CLASS_POINTER_DEFINITION( Umat3e );
@@ -101,12 +98,12 @@ public:
         return p_clone;
     }
 
-    size_t WorkingSpaceDimension()
+    size_t WorkingSpaceDimension() final
     {
         return 3;
     }
 
-    size_t GetStrainSize()
+    size_t GetStrainSize() const final
     {
         return 6;
     }
@@ -133,6 +130,8 @@ public:
     bool Has ( const Variable<Vector>& rThisVariable ) final;
 
     bool Has ( const Variable<Matrix>& rThisVariable ) final;
+
+    // bool Has ( const Variable<std::string>& rThisVariable ) final;
 
     int& GetValue ( const Variable<int>& rThisVariable, int& rValue ) final;
 
@@ -181,6 +180,12 @@ public:
                                         const GeometryType& geom,
                                         const Vector& ShapeFunctionsValues,
                                         const ProcessInfo& CurrentProcessInfo ) final;
+
+    /**
+     * Computes the material response in terms of Cauchy stresses and constitutive tensor
+     * @see Parameters
+     */
+    void CalculateMaterialResponseCauchy( Parameters& parameters ) final;
 
     /// DEPRECATED interface
     void CalculateMaterialResponse ( const Vector& StrainVector,
@@ -232,60 +237,41 @@ private:
     std::string mName;
     std::string mCMNAME;
 
-    #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
-    // handle to umat library
-    void* mp_umat_handle;
+    std::size_t mStep;  // step counter
+    int mIncrement;     // increment counter
+    bool mPresetInternalVariables; // flag to control the preset of the internal variables
+        // In principle, the internal variables are always set to zero when ResetMaterial is called
+        // However, one can override this behaviour by setting INTERNAL_VARIABLES before calling ResetMaterial
+        // This flag will be reset whenever ResetMaterial is called
 
-    /**
-     * wrapper function for calling the UMAT fortran subroutine
-     * @param STRESS ......... the vector of stresses
-     * @param STATEV ......... the vector of state variables
-     * @param DDSDDE ......... the material tangent
-     * @param SSE ............
-     * @param SPD ............
-     * @param SCD ............
-     * @param RPL ............
-     * @param DDSDDT .........
-     * @param DRPLDE .........
-     * @param DRPLDT .........
-     * @param STRAN .......... the vector of total strains
-     * @param DSTRAN ......... the vector of incremental strains
-     * @param TIME ........... current time
-     * @param DTIME .......... current time increment
-     * @param TEMP ........... current temperature
-     * @param DTEMP .......... current increment of temperature
-     * @param PREDEF .........
-     * @param DPRED ..........
-     * @param CMNAME ......... material name
-     * @param NDI ............ number of direct strain components (3 in 3D)
-     * @param NSHR ........... number if shear strain components (3 in 3D)
-     * @param NTENS .......... number of stress components (6 in 3D)
-     * @param NSTATV ......... number of state variables (size of STATEV)
-     * @param PROPS .......... material parameters
-     * @param NPROPS ......... number of material paramters (size of PROPS)
-     * @param COORDS ......... coordinates of the integration point
-     * @param DROT ........... rotation increment (3, 3)
-     * @param PNEWDT .........
-     * @param CELENT ......... characteristic element length
-     * @param DFGRD0 .........
-     * @param DFGRD1 .........
-     * @param NOEL ........... element number
-     * @param NPT ............ integration point number
-     * @param KSLAY ..........
-     * @param KSPT ...........
-     * @param KSTEP .......... step number
-     * @param KINC ........... increment number
-     */
-    void (*Umat)(double* STRESS, double* STATEV, double** DDSDDE, double* SSE, double* SPD, double* SCD,
-                 double* RPL, double* DDSDDT, double* DRPLDE, double* DRPLDT, double* STRAN, double* DSTRAN,
-                 double* TIME, double* DTIME, double* TEMP, double* DTEMP, double* PREDEF, double* DPRED,
-                 char* CMNAME, int* NDI, int* NSHR, int* NTENS, int* NSTATV, double* PROPS, int* NPROPS,
-                 double* COORDS, double** DROT, double* PNEWDT, double* CELENT, double** DFGRD0,
-                 double** DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC);
+    #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
+    // values to store the instances of this constitutive law
+    static unsigned long long minstances;
+
+    // handle to Umat library
+    static void* mp_umat_handle;
+
+    // wrapper function for calling the UMAT fortran subroutine
+    static umat_t Umat;
     #endif
 
     /// Reset only the material state to initial state
     void ResetState();
+
+    ///
+    void CalculateMaterialResponse ( const Vector& StrainVector,
+            const Matrix& DeformationGradient,
+            Vector& StressVector,
+            Matrix& AlgorithmicTangent,
+            const ProcessInfo& CurrentProcessInfo,
+            const Properties& props,
+            const GeometryType& geom,
+            const Vector& ShapeFunctionsValues,
+            bool CalculateStresses,
+            int CalculateTangent,
+            bool SaveInternalVariables,
+            bool IsSetStrain,
+            bool IsSetDeformationGradient );
 
     // serialization
     friend class Serializer;

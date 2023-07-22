@@ -2,6 +2,7 @@
 #include <dlfcn.h>
 
 #include "includes/define.h"
+#include "constitutive_laws/umat3.h"
 #include "constitutive_laws/umat3e.h"
 #include "includes/constitutive_law.h"
 
@@ -10,7 +11,6 @@
 #include "includes/properties.h"
 #include "includes/ublas_interface.h"
 #include "geometries/geometry.h"
-#include "constitutive_laws_application_variables.h"
 #include "structural_application/structural_application_variables.h"
 
 // #define DEBUG_UMAT
@@ -24,18 +24,9 @@ namespace Kratos
 
 typedef Kratos::ConstitutiveLaw::GeometryType GeometryType;
 
-const int Umat3e::A2K[] = {0, 1, 2, 3, 5, 4};
-const int Umat3e::K2A[] = {0, 1, 2, 3, 5, 4};
-const int Umat3e::PS[]  = {0, 1, 3};
-
-#ifdef KRATOS_UMAT_LIBRARY_IS_PROVIDED
-extern "C" void umat_( double* STRESS, double* STATEV, double** DDSDDE, double* SSE, double* SPD, double* SCD,
-                       double* RPL, double* DDSDDT, double* DRPLDE, double* DRPLDT, double* STRAN, double* DSTRAN,
-                       double* TIME, double* DTIME, double* TEMP, double* DTEMP, double* PREDEF, double* DPRED,
-                       char* CMNAME, int* NDI, int* NSHR, int* NTENS, int* NSTATV, double* PROPS, int* NPROPS,
-                       double* COORDS, double** DROT, double* PNEWDT, double* CELENT, double** DFGRD0,
-                       double** DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC );
-#endif
+unsigned long long Umat3e::minstances = 0;
+void* Umat3e::mp_umat_handle = 0;
+umat_t Umat3e::Umat = 0;
 
 Umat3e::Umat3e()
 {
@@ -43,44 +34,16 @@ Umat3e::Umat3e()
 
 Umat3e::~Umat3e()
 {
-    #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
-    if(mp_umat_handle != 0)
+    --minstances;
+    if(minstances == 0)
+    {
         dlclose(mp_umat_handle);
-    #endif
+        std::cout << "Successfully unload the Umat shared library/DLL" << std::endl;
+    }
 }
 
 int Umat3e::Check( const Kratos::Properties& props, const GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo ) const
 {
-    #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
-    if(props.Has( ABAQUS_LIBRARY_NAME ) == false)
-    {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties must define ABAQUS_LIBRARY_NAME", "")
-    }
-    if(props.Has( UMAT_NAME ) == false)
-    {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties must define UMAT_NAME", "")
-    }
-    #endif
-    if((props.Has( UMAT_NDI ) == false) && (Has(UMAT_NDI) == false))
-    {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties or ConstitutiveLaw must define UMAT_NDI", "")
-    }
-    if((props.Has( UMAT_NSHR ) == false) && (Has(UMAT_NSHR) == false))
-    {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties or ConstitutiveLaw must define UMAT_NSHR", "")
-    }
-    if((props.Has( UMAT_NSTATV ) == false) && (Has(UMAT_NSTATV) == false))
-    {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties or ConstitutiveLaw must define UMAT_NSTATV", "")
-    }
-    if(props.Has( UMAT_CMNAME ) == false)
-    {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties must define UMAT_CMNAME", "")
-    }
-    if(props.Has( MATERIAL_PARAMETERS ) == false)
-    {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties must define MATERIAL_PARAMETERS", "")
-    }
     return 0;
 }
 
@@ -121,6 +84,17 @@ bool Umat3e::Has( const Variable<Matrix>& rThisVariable )
 {
     return false;
 }
+
+// bool Umat3e::Has( const Variable<std::string>& rThisVariable )
+// {
+//     if (rThisVariable == ABAQUS_LIBRARY_NAME)
+//         return true;
+//     if (rThisVariable == UMAT_NAME)
+//         return true;
+//     if (rThisVariable == UMAT_CMNAME)
+//         return true;
+//     return false;
+// }
 
 int& Umat3e::GetValue( const Variable<int>& rThisVariable, int& rValue )
 {
@@ -216,6 +190,14 @@ Vector& Umat3e::GetValue( const Variable<Vector>& rThisVariable, Vector& rValue 
         if(rValue.size() != mOldStateVariables.size())
             rValue.resize(mOldStateVariables.size(), false);
         noalias(rValue) = mOldStateVariables;
+
+        #ifdef DEBUG_UMAT
+        if(mElementId == DEBUG_ELEMENT_ID && mIntPointIndex == DEBUG_POINT_ID)
+        {
+            KRATOS_WATCH(__LINE__)
+            KRATOS_WATCH(mOldStateVariables)
+        }
+        #endif
     }
     if(rThisVariable == STRESSES)
     {
@@ -296,6 +278,10 @@ Matrix& Umat3e::GetValue( const Variable<Matrix>& rThisVariable, Matrix& rValue 
 
 std::string& Umat3e::GetValue( const Variable<std::string>& rThisVariable, std::string& rValue )
 {
+    if(rThisVariable == ABAQUS_LIBRARY_NAME)
+        rValue = mLibName;
+    if(rThisVariable == UMAT_NAME)
+        rValue = mName;
     if(rThisVariable == UMAT_CMNAME)
         rValue = mCMNAME;
     return rValue;
@@ -374,6 +360,7 @@ void Umat3e::SetValue( const Variable<Vector>& rVariable, const Vector& rValue, 
             mOldStateVariables.resize(rValue.size());
 //            KRATOS_THROW_ERROR(std::logic_error, "The size of the INTERNAL_VARIABLES variable is incompatible", "")
         noalias(mOldStateVariables) = rValue;
+        mPresetInternalVariables = true;
     }
 }
 
@@ -457,36 +444,43 @@ void Umat3e::InitializeMaterial( const Properties& props,
     noalias(mCurrentStateVariables) = ZeroVector(mNSTATV);
     noalias(mOldStateVariables) = ZeroVector(mNSTATV);
 
-    #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
-    // get the library name and load the udsm subroutine
-//    mp_umat_handle = dlopen(mLibName.c_str(), RTLD_LAZY);
-    mp_umat_handle = dlopen(mLibName.c_str(), RTLD_NOW | RTLD_GLOBAL);
-    if(mp_umat_handle == 0)
+    mStep = 0;
+    mIncrement = 0;
+    mPresetInternalVariables = false;
+
+    if (minstances == 0)
     {
-        KRATOS_THROW_ERROR(std::runtime_error, "The Abaqus material library does not exist:", mLibName)
+        // mp_umat_handle = dlopen(lib_name.c_str(), RTLD_LAZY);
+        mp_umat_handle = dlopen(mLibName.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        if(mp_umat_handle == 0)
+        {
+            std::stringstream ss;
+            ss << "Error loading Abaqus material library " << mLibName
+               << ", error message: " << dlerror();
+            KRATOS_THROW_ERROR(std::runtime_error, ss.str(), "")
+        }
+
+        char* error;
+        Umat = (umat_t) dlsym(mp_umat_handle, mName.c_str());
+        error = dlerror();
+        if(error != NULL)
+        {
+            std::stringstream ss;
+            ss << "Error loading subroutine " << mName << " in the " << mLibName << " library, error message = " << error;
+            KRATOS_THROW_ERROR(std::runtime_error, ss.str(), "")
+        }
+        else
+        {
+            std::cout << "Successfully load Umat from " << mLibName << std::endl;
+        }
     }
 
-    char* error;
-    Umat = (void (*)(double* STRESS, double* STATEV, double** DDSDDE, double* SSE, double* SPD, double* SCD,
-                double* RPL, double* DDSDDT, double* DRPLDE, double* DRPLDT, double* STRAN, double* DSTRAN,
-                double* TIME, double* DTIME, double* TEMP, double* DTEMP, double* PREDEF, double* DPRED,
-                char* CMNAME, int* NDI, int* NSHR, int* NTENS, int* NSTATV, double* PROPS, int* NPROPS,
-                double* COORDS, double** DROT, double* PNEWDT, double* CELENT, double** DFGRD0,
-                double** DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC))
-           dlsym(mp_umat_handle, mName.c_str());
-    error = dlerror();
-    if(error != NULL)
-    {
-        std::stringstream ss;
-        ss << "Error loading subroutine " << mName << " in the " << mLibName << " library, error message = " << error;
-        KRATOS_THROW_ERROR(std::runtime_error, ss.str(), "")
-    }
-    #endif
+    ++minstances;
 }
 
 void Umat3e::ResetMaterial( const Properties& props,
-                           const GeometryType& geom,
-                           const Vector& ShapeFunctionsValues )
+                            const GeometryType& geom,
+                            const Vector& ShapeFunctionsValues )
 {
     unsigned int strain_size;
     if (mNDI == 3 && mNSHR == 3)
@@ -508,7 +502,7 @@ void Umat3e::ResetMaterial( const Properties& props,
 
     if(mCurrentStateVariables.size() != mNSTATV)
         mCurrentStateVariables.resize(mNSTATV, false);
-    noalias(mCurrentStateVariables) = ZeroVector(mNSTATV);
+    noalias(mCurrentStateVariables) = mOldStateVariables;
 
     #ifdef DEBUG_UMAT
     if(mElementId == DEBUG_ELEMENT_ID && mIntPointIndex == DEBUG_POINT_ID)
@@ -521,7 +515,7 @@ void Umat3e::ResetMaterial( const Properties& props,
     }
     #endif
 
-    ResetState();
+    this->ResetState();
 }
 
 void Umat3e::ResetState()
@@ -580,9 +574,14 @@ void Umat3e::ResetState()
         mOldStrain.resize(strain_size, false);
     noalias(mOldStrain) = ZeroVector(strain_size);
 
-    if(mOldStateVariables.size() != mNSTATV)
-        mOldStateVariables.resize(mNSTATV, false);
-    noalias(mOldStateVariables) = ZeroVector(mNSTATV);
+    if (!mPresetInternalVariables)
+    {
+        if(mOldStateVariables.size() != mNSTATV)
+            mOldStateVariables.resize(mNSTATV, false);
+        noalias(mOldStateVariables) = ZeroVector(mNSTATV);
+    }
+    else
+        mPresetInternalVariables = false;
 
     #ifdef DEBUG_UMAT
     if(mElementId == DEBUG_ELEMENT_ID && mIntPointIndex == DEBUG_POINT_ID)
@@ -591,6 +590,7 @@ void Umat3e::ResetState()
         KRATOS_WATCH(mPrestress)
         KRATOS_WATCH(mOldStress)
         KRATOS_WATCH(mOldStressZZ)
+        KRATOS_WATCH(mOldStateVariables)
     }
     #endif
 }
@@ -600,6 +600,8 @@ void Umat3e::InitializeSolutionStep( const Properties& props,
                                      const Vector& ShapeFunctionsValues ,
                                      const ProcessInfo& CurrentProcessInfo )
 {
+    ++mStep;
+    mIncrement = 0;
 }
 
 void Umat3e::InitializeNonLinearIteration ( const Properties& props,
@@ -607,6 +609,25 @@ void Umat3e::InitializeNonLinearIteration ( const Properties& props,
                                             const Vector& ShapeFunctionsValues,
                                             const ProcessInfo& CurrentProcessInfo )
 {
+    ++mIncrement;
+}
+
+void Umat3e::CalculateMaterialResponseCauchy( Parameters& parameters )
+{
+    this->CalculateMaterialResponse( parameters.GetStrainVector()
+        , parameters.GetDeformationGradientF()
+        , parameters.GetStressVector()
+        , parameters.GetConstitutiveMatrix()
+        , parameters.GetProcessInfo()
+        , parameters.GetMaterialProperties()
+        , parameters.GetElementGeometry()
+        , parameters.GetShapeFunctionsValues()
+        , parameters.IsSetStressVector()
+        , parameters.IsSetConstitutiveMatrix()
+        , true
+        , parameters.IsSetStrainVector()
+        , parameters.IsSetDeformationGradientF()
+    );
 }
 
 void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
@@ -621,10 +642,33 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
                                         int CalculateTangent,
                                         bool SaveInternalVariables )
 {
-    if (CalculateStresses && !CalculateTangent)
+    this->CalculateMaterialResponse( StrainVector, DeformationGradient,
+            StressVector, AlgorithmicTangent, CurrentProcessInfo, props, geom,
+            ShapeFunctionsValues, CalculateStresses, CalculateTangent,
+            SaveInternalVariables, true, false );
+}
+
+void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
+                                        const Matrix& DeformationGradient,
+                                        Vector& StressVector,
+                                        Matrix& AlgorithmicTangent,
+                                        const ProcessInfo& CurrentProcessInfo,
+                                        const Properties& props,
+                                        const GeometryType& geom,
+                                        const Vector& ShapeFunctionsValues,
+                                        bool CalculateStresses,
+                                        int CalculateTangent,
+                                        bool SaveInternalVariables,
+                                        bool IsSetStrain,
+                                        bool IsSetDeformationGradient )
+{
+    if (CurrentProcessInfo[SET_CALCULATE_REACTION])
     {
-        noalias(StressVector) = mCurrentStress;
-        return;
+        if (CalculateStresses)
+        {
+            noalias(StressVector) = mCurrentStress;
+            return;
+        }
     }
 
     int NPROPS = mPROPS.size();
@@ -645,52 +689,72 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
     double DTIM;
     double SSE, SPD, SCD, RPL;
     double TEMP, DTEMP;
-    int KSTEP, KINC;
+    int KSTEP = (int) mStep, KINC = (int) mIncrement;
 
-    if( (mNDI == 3) && (mNSHR == 3) ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
+    #ifdef DEBUG_UMAT
+    if(mElementId == DEBUG_ELEMENT_ID && mIntPointIndex == DEBUG_POINT_ID)
     {
-        for(int i = 0; i < NTENS; ++i)
+        std::cout << "Element " << mElementId << ", point " << mIntPointIndex << " at CalculateMaterialResponse:" << std::endl;
+        KRATOS_WATCH(mOldStress)
+        KRATOS_WATCH(StrainVector)
+        KRATOS_WATCH(mOldStrain)
+        KRATOS_WATCH(StrainVector - mOldStrain)
+        KRATOS_WATCH(mOldStateVariables)
+        KRATOS_WATCH(CurrentProcessInfo[DELTA_TIME])
+        // KRATOS_THROW_ERROR(std::logic_error, "stop here", "")
+    }
+    #endif
+
+    if (IsSetStrain)
+    {
+        if( (mNDI == 3) && (mNSHR == 3) ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
         {
-            STRAN[i] = StrainVector[K2A[i]];
-            DSTRAN[i] = StrainVector[K2A[i]] - mOldStrain[K2A[i]];
-            STRES[i] = mOldStress[K2A[i]];
-            for(int j = 0; j < NTENS; ++j)
-                DDSDDE[i][j] = 0.0;
+            for(int i = 0; i < NTENS; ++i)
+            {
+                STRAN[i] = StrainVector[Umat3::K2A[i]];
+                DSTRAN[i] = StrainVector[Umat3::K2A[i]] - mOldStrain[Umat3::K2A[i]];
+                STRES[i] = mOldStress[Umat3::K2A[i]];
+                for(int j = 0; j < NTENS; ++j)
+                    DDSDDE[i][j] = 0.0;
+            }
+        }
+        else if( (mNDI == 2) & (mNSHR == 1) ) // 2D case    [o_xx  o_yy  o_xy]
+        {
+            for(int i = 0; i < NTENS; ++i)
+            {
+                STRAN[i] = StrainVector[i];
+                DSTRAN[i] = StrainVector[i] - mOldStrain[i];
+                STRES[i] = mOldStress[i];
+                for(int j = 0; j < NTENS; ++j)
+                    DDSDDE[i][j] = 0.0;
+            }
+        }
+        else if( (mNDI == 3) & (mNSHR == 1) ) // 2D case, plane strain    [o_xx  o_yy  o_zz  o_xy]
+        {
+            for(int i = 0; i < 3; ++i)
+            {
+                STRAN[Umat3::PS[i]] = StrainVector[i];
+                DSTRAN[Umat3::PS[i]] = StrainVector[i] - mOldStrain[i];
+                STRES[Umat3::PS[i]] = mOldStress[i];
+            }
+            STRAN[2] = 0.0;
+            DSTRAN[2] = 0.0;
+            for(int i = 0; i < 4; ++i)
+                for(int j = 0; j < 4; ++j)
+                    DDSDDE[i][j] = 0.0;
+            STRES[2] = mOldStressZZ;
         }
     }
-    else if( (mNDI == 2) & (mNSHR == 1) ) // 2D case    [o_xx  o_yy  o_xy]
-    {
-        for(int i = 0; i < NTENS; ++i)
-        {
-            STRAN[i] = StrainVector[i];
-            DSTRAN[i] = StrainVector[i] - mOldStrain[i];
-            STRES[i] = mOldStress[i];
-            for(int j = 0; j < NTENS; ++j)
-                DDSDDE[i][j] = 0.0;
-        }
-    }
-    else if( (mNDI == 3) & (mNSHR == 1) ) // 2D case, plane strain    [o_xx  o_yy  o_zz  o_xy]
+
+    if (IsSetDeformationGradient)
     {
         for(int i = 0; i < 3; ++i)
         {
-            STRAN[PS[i]] = StrainVector[i];
-            DSTRAN[PS[i]] = StrainVector[i] - mOldStrain[i];
-            STRES[PS[i]] = mOldStress[i];
-        }
-        STRAN[2] = 0.0;
-        DSTRAN[2] = 0.0;
-        for(int i = 0; i < 4; ++i)
-            for(int j = 0; j < 4; ++j)
-                DDSDDE[i][j] = 0.0;
-        STRES[2] = mOldStressZZ;
-    }
-
-    for(int i = 0; i < 3; ++i)
-    {
-        for(int j = 0; j < 3; ++j)
-        {
-            DFGRD0[i][j] = 0.0;
-            DFGRD1[i][j] = DeformationGradient(i, j);
+            for(int j = 0; j < 3; ++j)
+            {
+                DFGRD0[i][j] = 0.0;
+                DFGRD1[i][j] = DeformationGradient(i, j);
+            }
         }
     }
 
@@ -706,24 +770,6 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
     TEMP = 0.0;
     DTEMP = 0.0; // TODO: take into account the temperature
 
-    #ifdef KRATOS_UMAT_LIBRARY_IS_PROVIDED
-    umat_( STRES,
-          STATEV,
-          (double**)DDSDDE,
-          &SSE, &SPD, &SCD, &RPL,
-          DDSDDT, DRPLDE, DRPLDT,
-          STRAN, DSTRAN,
-          TIM, &DTIM,
-          &TEMP, &DTEMP,
-          NULL, NULL,
-          (char*) mCMNAME.c_str(),
-          &mNDI, &mNSHR, &NTENS, &mNSTATV, &mPROPS[0], &NPROPS,
-          NULL, NULL, NULL, NULL,
-          (double**)DFGRD0, (double**)DFGRD1,
-          &mElementId, &mIntPointIndex,
-          NULL, NULL,
-          &KSTEP, &KINC );
-    #else
     Umat( STRES,
           STATEV,
           (double**)DDSDDE,
@@ -740,7 +786,6 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
           &mElementId, &mIntPointIndex,
           NULL, NULL,
           &KSTEP, &KINC );
-    #endif
 
     noalias(mCurrentStrain) = StrainVector;
 
@@ -748,7 +793,7 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
     {
         for(int i = 0; i < NTENS; ++i)
         {
-            mCurrentStress[i] = STRES[A2K[i]];
+            mCurrentStress[i] = STRES[Umat3::A2K[i]];
         }
     }
     else if(mNDI == 2 && mNSHR == 1)
@@ -762,12 +807,13 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
     {
         for(int i = 0; i < 3; ++i)
         {
-            mCurrentStress[i] = STRES[PS[i]];
+            mCurrentStress[i] = STRES[Umat3::PS[i]];
         }
         mCurrentStressZZ = STRES[2];
     }
 
-    noalias(StressVector) = mCurrentStress;
+    if (CalculateStresses)
+        noalias(StressVector) = mCurrentStress;
 
     // TODO: take into account the temperature
 
@@ -775,39 +821,53 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
     {
         mCurrentStateVariables[i] = STATEV[i];
     }
-//TODO verify if DDSDDE need to be transpose because of Fortran (!!!!!!IMPORTANT!!!!)
-    if( (mNDI == 3) && (mNSHR == 3) ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
+
+    if (CalculateTangent)
     {
-        for(int i = 0; i < NTENS; ++i)
+        if( (mNDI == 3) && (mNSHR == 3) ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
         {
-            for(int j = 0; j < NTENS; ++j)
+            for(int i = 0; i < NTENS; ++i)
             {
-                AlgorithmicTangent(i, j) = DDSDDE[A2K[j]][A2K[i]];
+                for(int j = 0; j < NTENS; ++j)
+                {
+                    AlgorithmicTangent(i, j) = DDSDDE[Umat3::A2K[j]][Umat3::A2K[i]];
+                }
             }
         }
-    }
-    else if( (mNDI == 2) && (mNSHR == 1) ) // 2D case    [o_xx  o_yy  o_xy]
-    {
-        for(int i = 0; i < NTENS; ++i)
+        else if( (mNDI == 2) && (mNSHR == 1) ) // 2D case    [o_xx  o_yy  o_xy]
         {
-            for(int j = 0; j < NTENS; ++j)
+            for(int i = 0; i < NTENS; ++i)
             {
-                AlgorithmicTangent(i, j) = DDSDDE[j][i];
+                for(int j = 0; j < NTENS; ++j)
+                {
+                    AlgorithmicTangent(i, j) = DDSDDE[j][i];
+                }
             }
         }
-    }
-    else if( (mNDI == 3) && (mNSHR == 1) ) // 2D case    [o_xx  o_yy  o_zz  o_xy]
-    {
-        for(int i = 0; i < 3; ++i)
+        else if( (mNDI == 3) && (mNSHR == 1) ) // 2D case    [o_xx  o_yy  o_zz  o_xy]
         {
-            for(int j = 0; j < 3; ++j)
+            for(int i = 0; i < 3; ++i)
             {
-                AlgorithmicTangent(i, j) = DDSDDE[PS[j]][PS[i]];
+                for(int j = 0; j < 3; ++j)
+                {
+                    AlgorithmicTangent(i, j) = DDSDDE[Umat3::PS[j]][Umat3::PS[i]];
+                }
             }
         }
+    //    KRATOS_WATCH(AlgorithmicTangent)
+        // TODO: export the variable SSE, SPD, SCD, RPL
     }
-//    KRATOS_WATCH(AlgorithmicTangent)
-    // TODO: export the variable SSE, SPD, SCD, RPL
+
+    #ifdef DEBUG_UMAT
+    if(mElementId == DEBUG_ELEMENT_ID && mIntPointIndex == DEBUG_POINT_ID)
+    {
+        if (CalculateStresses)
+            KRATOS_WATCH(mCurrentStress)
+        KRATOS_WATCH(mCurrentStateVariables)
+        if (CalculateTangent)
+            KRATOS_WATCH(AlgorithmicTangent)
+    }
+    #endif
 }
 
 void Umat3e::FinalizeNonLinearIteration ( const Properties& props,
@@ -829,3 +889,16 @@ void Umat3e::FinalizeSolutionStep( const Properties& props,
 }
 
 } // Namespace Kratos
+
+#ifdef DEBUG_UMAT
+#undef DEBUG_UMAT
+#endif
+
+#ifdef DEBUG_ELEMENT_ID
+#undef DEBUG_ELEMENT_ID
+#endif
+
+#ifdef DEBUG_POINT_ID
+#undef DEBUG_POINT_ID
+#endif
+
