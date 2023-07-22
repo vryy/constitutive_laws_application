@@ -258,7 +258,15 @@ void Umat3::InitializeMaterial( const Properties& props,
     }
     else if (NDI == 3 && NSHR == 1)
     {
-        strain_size = 3;
+        bool is_axisymmetric = false;
+        if (props.Has(IS_AXISYMMETRIC))
+            if (props[IS_AXISYMMETRIC])
+                is_axisymmetric = true;
+
+        if (is_axisymmetric)
+            strain_size = 4;
+        else
+            strain_size = 3;
     }
     else if (NDI == 2 && NSHR == 1)
     {
@@ -470,6 +478,8 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
     double TEMP, DTEMP;
     int KSTEP = (int) mStep, KINC = (int) mIncrement;
 
+    bool is_axisymmetric = false;
+
     if (IsSetStrain)
     {
         if( (NDI == 3) && (NSHR == 3) ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
@@ -494,20 +504,42 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
                     DDSDDE[i][j] = 0.0;
             }
         }
-        else if( (NDI == 3) & (NSHR == 1) ) // 2D case, plane strain    [o_xx  o_yy  o_zz  o_xy]
+        else if( (NDI == 3) & (NSHR == 1) )
         {
-            for(int i = 0; i < 3; ++i)
+            if (props.Has(IS_AXISYMMETRIC))
+                if (props[IS_AXISYMMETRIC])
+                    is_axisymmetric = true;
+
+            if (is_axisymmetric)  // axisymmetric  Abaqus [o_xx  o_yy  o_zz  o_xy] <=> Kratos [o_xx  o_yy  o_xy  o_zz]
             {
-                STRAN[PS[i]] = StrainVector[i];
-                DSTRAN[PS[i]] = StrainVector[i] - mOldStrain[i];
-                STRES[PS[i]] = mOldStress[i];
+                for(int i = 0; i < 3; ++i)
+                {
+                    STRAN[PS[i]] = StrainVector[i];
+                    DSTRAN[PS[i]] = StrainVector[i] - mOldStrain[i];
+                    STRES[PS[i]] = mOldStress[i];
+                }
+                STRAN[2] = StrainVector[3];
+                DSTRAN[2] = StrainVector[3] - mOldStrain[3];
+                for(int i = 0; i < 4; ++i)
+                    for(int j = 0; j < 4; ++j)
+                        DDSDDE[i][j] = 0.0;
+                STRES[2] = mOldStress[3];
             }
-            STRAN[2] = 0.0;
-            DSTRAN[2] = 0.0;
-            for(int i = 0; i < 4; ++i)
-                for(int j = 0; j < 4; ++j)
-                    DDSDDE[i][j] = 0.0;
-            STRES[2] = mOldStressZZ;
+            else // 2D case, plane strain   Abaqus [o_xx  o_yy  o_zz  o_xy] <=> Kratos [o_xx  o_yy  o_xy]
+            {
+                for(int i = 0; i < 3; ++i)
+                {
+                    STRAN[PS[i]] = StrainVector[i];
+                    DSTRAN[PS[i]] = StrainVector[i] - mOldStrain[i];
+                    STRES[PS[i]] = mOldStress[i];
+                }
+                STRAN[2] = 0.0;
+                DSTRAN[2] = 0.0;
+                for(int i = 0; i < 4; ++i)
+                    for(int j = 0; j < 4; ++j)
+                        DDSDDE[i][j] = 0.0;
+                STRES[2] = mOldStressZZ;
+            }
         }
     }
 
@@ -599,11 +631,23 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
     }
     else if(NDI == 3 && NSHR == 1)
     {
-        for(int i = 0; i < 3; ++i)
+        if (is_axisymmetric)
         {
-            mCurrentStress[i] = STRES[PS[i]];
+            for(int i = 0; i < 3; ++i)
+            {
+                mCurrentStress[i] = STRES[PS[i]];
+            }
+            mCurrentStress[3] = STRES[2];
+            mCurrentStressZZ = STRES[2];
         }
-        mCurrentStressZZ = STRES[2];
+        else
+        {
+            for(int i = 0; i < 3; ++i)
+            {
+                mCurrentStress[i] = STRES[PS[i]];
+            }
+            mCurrentStressZZ = STRES[2];
+        }
     }
 
     if(CalculateStresses)
