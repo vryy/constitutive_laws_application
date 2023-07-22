@@ -34,7 +34,7 @@ Umat2::~Umat2()
         dlclose(mp_umat_handle);
 }
 
-int Umat2::Check( const Kratos::Properties& props, const GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo )
+int Umat2::Check( const Kratos::Properties& props, const GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo ) const
 {
     if(props.Has( ABAQUS_LIBRARY_NAME ) == false)
     {

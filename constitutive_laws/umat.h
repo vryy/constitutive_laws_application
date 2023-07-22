@@ -31,134 +31,135 @@ public:
 
     //zero constructor
     Umat();
+
     //destructor
     virtual ~Umat();
 
     //clone
-    virtual BaseType::Pointer Clone() const
+    BaseType::Pointer Clone() const final
     {
         BaseType::Pointer p_clone ( new Umat() );
         return p_clone;
     }
 
-    size_t WorkingSpaceDimension()
+    size_t WorkingSpaceDimension() final
     {
         return 3;
     }
 
-    size_t GetStrainSize()
+    size_t GetStrainSize() const final
     {
         return 6;
     }
 
     //operators
-    virtual bool Has ( const Variable<double>& rThisVariable )
+    bool Has ( const Variable<double>& rThisVariable ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::Has(double)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::Has(double)", "" );
     }
 
-    virtual bool Has ( const Variable<Vector>& rThisVariable )
+    bool Has ( const Variable<Vector>& rThisVariable ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::Has(Vector)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::Has(Vector)", "" );
     }
 
-    virtual bool Has ( const Variable<Matrix>& rThisVariable )
+    bool Has ( const Variable<Matrix>& rThisVariable ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::Has(Matrix)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::Has(Matrix)", "" );
     }
 
-    virtual bool Has ( const Variable<PlaneArrayType>& rThisVariable )
+    bool Has ( const Variable<PlaneArrayType>& rThisVariable ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::Has(2DVector)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::Has(2DVector)", "" );
     }
 
-    virtual bool Has ( const Variable<SpaceArrayType>& rThisVariable )
+    bool Has ( const Variable<SpaceArrayType>& rThisVariable ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::Has(3DVector)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::Has(3DVector)", "" );
     }
 
-    virtual double& GetValue ( const Variable<double>& rThisVariable,
-                               double& rValue )
+    double& GetValue ( const Variable<double>& rThisVariable,
+                               double& rValue ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::GetValue(double)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::GetValue(double)", "" );
     }
 
-    virtual Vector& GetValue ( const Variable<Vector>& rThisVariable,
-                               Vector& rValue )
+    Vector& GetValue ( const Variable<Vector>& rThisVariable,
+                               Vector& rValue ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::GetValue(Vector)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::GetValue(Vector)", "" );
     }
 
-    virtual Matrix& GetValue ( const Variable<Matrix>& rThisVariable,
-                               Matrix& rValue )
+    Matrix& GetValue ( const Variable<Matrix>& rThisVariable,
+                               Matrix& rValue ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::GetValue(Matrix)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::GetValue(Matrix)", "" );
     }
 
-    virtual PlaneArrayType& GetValue ( const Variable<PlaneArrayType>& rVariable,
-                                       PlaneArrayType& rValue )
+    PlaneArrayType& GetValue ( const Variable<PlaneArrayType>& rVariable,
+                                       PlaneArrayType& rValue ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::GetValue(2DVector)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::GetValue(2DVector)", "" );
     }
 
-    virtual SpaceArrayType & GetValue ( const Variable<SpaceArrayType>& rVariable,
-                                        SpaceArrayType& rValue )
+    SpaceArrayType & GetValue ( const Variable<SpaceArrayType>& rVariable,
+                                        SpaceArrayType& rValue ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::GetValue(3DVector)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::GetValue(3DVector)", "" );
     }
 
 
-    virtual void SetValue ( const Variable<double>& rThisVariable,
-                            const double& rValue,
-                            const ProcessInfo& rCurrentProcessInfo )
+    void SetValue ( const Variable<double>& rThisVariable,
+                    const double& rValue,
+                    const ProcessInfo& rCurrentProcessInfo ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::SetValue(Double)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::SetValue(Double)", "" );
     }
 
-    virtual void SetValue ( const Variable<Vector>& rThisVariable,
-                            const Vector& rValue,
-                            const ProcessInfo& rCurrentProcessInfo )
+    void SetValue ( const Variable<Vector>& rThisVariable,
+                    const Vector& rValue,
+                    const ProcessInfo& rCurrentProcessInfo ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::SetValue(Vector)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::SetValue(Vector)", "" );
     }
 
-    virtual void SetValue ( const Variable<Matrix>& rThisVariable,
-                            const Matrix& rValue,
-                            const ProcessInfo& rCurrentProcessInfo )
+    void SetValue ( const Variable<Matrix>& rThisVariable,
+                    const Matrix& rValue,
+                    const ProcessInfo& rCurrentProcessInfo ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::SetValue(Matrix)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::SetValue(Matrix)", "" );
     }
 
-    virtual void SetValue ( const Variable<PlaneArrayType>& rThisVariable,
-                            const PlaneArrayType& rValue,
-                            const ProcessInfo& rCurrentProcessInfo )
+    void SetValue ( const Variable<PlaneArrayType>& rThisVariable,
+                    const PlaneArrayType& rValue,
+                    const ProcessInfo& rCurrentProcessInfo ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::SetValue(2DVector)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::SetValue(2DVector)", "" );
     }
 
-    virtual void SetValue ( const Variable<SpaceArrayType>& rVariable,
-                            const SpaceArrayType& Value,
-                            const ProcessInfo& rCurrentProcessInfo )
+    void SetValue ( const Variable<SpaceArrayType>& rVariable,
+                    const SpaceArrayType& Value,
+                    const ProcessInfo& rCurrentProcessInfo ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::SetValue(3DVector)", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::SetValue(3DVector)", "" );
     }
 
-    virtual bool ValidateInput ( const Properties& props )
+    bool ValidateInput ( const Properties& props ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::ValidateInput called", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::ValidateInput called", "" );
     }
 
-    StrainMeasure GetStrainMeasure()
+    StrainMeasure GetStrainMeasure() final
     {
         return StrainMeasure_Infinitesimal;
     }
 
-    StressMeasure GetStressMeasure()
+    StressMeasure GetStressMeasure() final
     {
         return StressMeasure_PK1;
     }
 
-    bool IsIncremental()
+    bool IsIncremental() final
     {
         return false;
     }
@@ -166,30 +167,30 @@ public:
 
 
     //Material parameters inizialization
-    virtual void InitializeMaterial ( const Properties& props,
-                                      const GeometryType& geom,
-                                      const Vector& ShapeFunctionsValues );
+    void InitializeMaterial ( const Properties& props,
+                              const GeometryType& geom,
+                              const Vector& ShapeFunctionsValues ) final;
 
 
-    virtual void InitializeSolutionStep ( const Properties& props,
-                                          const GeometryType& geom,
-                                          const Vector& ShapeFunctionsValues ,
-                                          const ProcessInfo& CurrentProcessInfo );
+    void InitializeSolutionStep ( const Properties& props,
+                                  const GeometryType& geom,
+                                  const Vector& ShapeFunctionsValues ,
+                                  const ProcessInfo& CurrentProcessInfo ) final;
 
-    virtual void FinalizeSolutionStep ( const Properties& props,
+    void FinalizeSolutionStep ( const Properties& props,
+                                const GeometryType& geom,
+                                const Vector& ShapeFunctionsValues ,
+                                const ProcessInfo& CurrentProcessInfo ) final;
+
+    void InitializeNonLinearIteration ( const Properties& props,
                                         const GeometryType& geom,
-                                        const Vector& ShapeFunctionsValues ,
-                                        const ProcessInfo& CurrentProcessInfo );
-
-    virtual void InitializeNonLinearIteration ( const Properties& props,
-            const GeometryType& geom,
-            const Vector& ShapeFunctionsValues,
-            const ProcessInfo& CurrentProcessInfo )
+                                        const Vector& ShapeFunctionsValues,
+                                        const ProcessInfo& CurrentProcessInfo ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::InitializeNonLinearIteration called", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::InitializeNonLinearIteration called", "" );
     }
 
-    virtual void CalculateMaterialResponse ( const Vector& StrainVector,
+    void CalculateMaterialResponse ( const Vector& StrainVector,
             const Matrix& DeformationGradient,
             Vector& StressVector,
             Matrix& AlgorithmicTangent,
@@ -199,10 +200,10 @@ public:
             const Vector& ShapeFunctionsValues,
             bool CalculateStresses = true,
             int CalculateTangent = true,
-            bool SaveInternalVariables = true );
+            bool SaveInternalVariables = true ) final;
 
 
-    virtual void CalculateVolumetricResponse ( const double VolumetricStrain,
+    void CalculateVolumetricResponse ( const double VolumetricStrain,
             const Matrix& DeformationGradient,
             double& VolumetricStress,
             double& AlgorithmicBulk,
@@ -212,12 +213,12 @@ public:
             const Vector& ShapeFunctionsValues,
             bool CalculateStresses = true,
             int CalculateTangent = true,
-            bool SaveInternalVariables = true )
+            bool SaveInternalVariables = true ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::CalculateVolumetricResponse called", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::CalculateVolumetricResponse called", "" );
     }
 
-    virtual void CalculateDeviatoricResponse ( const Vector& StrainVector,
+    void CalculateDeviatoricResponse ( const Vector& StrainVector,
             const Matrix& DeformationGradient,
             Vector& StressVector,
             Matrix& AlgorithmicTangent,
@@ -227,28 +228,26 @@ public:
             const Vector& ShapeFunctionsValues,
             bool CalculateStresses = true,
             int CalculateTangent = true,
-            bool SaveInternalVariables = true )
+            bool SaveInternalVariables = true ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::CalculateDeviatoricResponse called", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::CalculateDeviatoricResponse called", "" );
     }
 
-    virtual void ResetMaterial ( const Properties& props,
-                                 const GeometryType& geom,
-                                 const Vector& ShapeFunctionsValues )
+    void ResetMaterial ( const Properties& props,
+                         const GeometryType& geom,
+                         const Vector& ShapeFunctionsValues ) final
     {
-        KRATOS_THROW_ERROR ( std::logic_error, "virtual function Umat::ResetMaterial called", "" );
+        KRATOS_THROW_ERROR ( std::logic_error, "function Umat::ResetMaterial called", "" );
     }
 
-    virtual void CalculateCauchyStresses ( Vector& Cauchy_StressVector,
-                                           const Matrix& F,
-                                           const Vector& PK2_StressVector,
-                                           const Vector& GreenLagrangeStrainVector );
+    void CalculateCauchyStresses ( Vector& Cauchy_StressVector,
+                                   const Matrix& F,
+                                   const Vector& PK2_StressVector,
+                                   const Vector& GreenLagrangeStrainVector ) final;
 
-    virtual int Check ( const Properties& props,
-                        const GeometryType& geom,
-                        const ProcessInfo& CurrentProcessInfo );
-
-protected:
+    int Check ( const Properties& props,
+                const GeometryType& geom,
+                const ProcessInfo& CurrentProcessInfo ) const final;
 
 private:
 
@@ -274,25 +273,20 @@ private:
 
     friend class Serializer;
 
-    virtual void save ( Serializer& rSerializer ) const
+    void save ( Serializer& rSerializer ) const override
     {
         rSerializer.save ( "name", "Umat" );
         KRATOS_SERIALIZE_SAVE_BASE_CLASS ( rSerializer, ConstitutiveLaw )
     }
 
-    virtual void load ( Serializer& rSerializer )
+    void load ( Serializer& rSerializer ) override
     {
         KRATOS_SERIALIZE_LOAD_BASE_CLASS ( rSerializer, ConstitutiveLaw )
     }
 
-
-
-
-
-
-
 }; // Class Umat
+
 }  // namespace Kratos.
 
-#endif // KRATOS_UMAT_H_INCLUDED  defined 
+#endif // KRATOS_UMAT_H_INCLUDED  defined
 

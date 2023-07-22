@@ -97,7 +97,7 @@ namespace Kratos
                 return 3;
             }
 
-            std::size_t GetStrainSize() override
+            std::size_t GetStrainSize() const override
             {
                 return 6;
             }
@@ -135,7 +135,7 @@ namespace Kratos
 
             int Check ( const Properties& props,
                         const GeometryType& geom,
-                        const ProcessInfo& CurrentProcessInfo ) final;
+                        const ProcessInfo& CurrentProcessInfo ) const final;
 
             void InitializeMaterial ( const Properties& props,
                                       const GeometryType& geom,
@@ -204,13 +204,13 @@ namespace Kratos
             //serialization
             friend class Serializer;
 
-            virtual void save ( Serializer& rSerializer ) const
+            void save ( Serializer& rSerializer ) const override
             {
                 rSerializer.save ( "name", "UDSM" );
                 KRATOS_SERIALIZE_SAVE_BASE_CLASS ( rSerializer, ConstitutiveLaw )
             }
 
-            virtual void load ( Serializer& rSerializer )
+            void load ( Serializer& rSerializer ) override
             {
                 KRATOS_SERIALIZE_LOAD_BASE_CLASS ( rSerializer, ConstitutiveLaw )
             }

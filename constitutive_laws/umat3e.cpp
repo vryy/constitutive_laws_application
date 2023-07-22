@@ -49,7 +49,7 @@ Umat3e::~Umat3e()
     #endif
 }
 
-int Umat3e::Check( const Kratos::Properties& props, const GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo )
+int Umat3e::Check( const Kratos::Properties& props, const GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo ) const
 {
     #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
     if(props.Has( ABAQUS_LIBRARY_NAME ) == false)
@@ -398,8 +398,8 @@ void Umat3e::SetValue( const Variable<std::string>& rVariable, const std::string
 }
 
 void Umat3e::InitializeMaterial( const Properties& props,
-                               const GeometryType& geom,
-                               const Vector& ShapeFunctionsValues )
+                                 const GeometryType& geom,
+                                 const Vector& ShapeFunctionsValues )
 {
     if (props.Has(UMAT_NDI))
         mNDI = props[UMAT_NDI];
@@ -596,30 +596,30 @@ void Umat3e::ResetState()
 }
 
 void Umat3e::InitializeSolutionStep( const Properties& props,
-                                    const GeometryType& geom,
-                                    const Vector& ShapeFunctionsValues ,
-                                    const ProcessInfo& CurrentProcessInfo )
+                                     const GeometryType& geom,
+                                     const Vector& ShapeFunctionsValues ,
+                                     const ProcessInfo& CurrentProcessInfo )
 {
 }
 
 void Umat3e::InitializeNonLinearIteration ( const Properties& props,
-                                           const GeometryType& geom,
-                                           const Vector& ShapeFunctionsValues,
-                                           const ProcessInfo& CurrentProcessInfo )
+                                            const GeometryType& geom,
+                                            const Vector& ShapeFunctionsValues,
+                                            const ProcessInfo& CurrentProcessInfo )
 {
 }
 
 void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
-                                       const Matrix& DeformationGradient,
-                                       Vector& StressVector,
-                                       Matrix& AlgorithmicTangent,
-                                       const ProcessInfo& CurrentProcessInfo,
-                                       const Properties& props,
-                                       const GeometryType& geom,
-                                       const Vector& ShapeFunctionsValues,
-                                       bool CalculateStresses,
-                                       int CalculateTangent,
-                                       bool SaveInternalVariables )
+                                        const Matrix& DeformationGradient,
+                                        Vector& StressVector,
+                                        Matrix& AlgorithmicTangent,
+                                        const ProcessInfo& CurrentProcessInfo,
+                                        const Properties& props,
+                                        const GeometryType& geom,
+                                        const Vector& ShapeFunctionsValues,
+                                        bool CalculateStresses,
+                                        int CalculateTangent,
+                                        bool SaveInternalVariables )
 {
     if (CalculateStresses && !CalculateTangent)
     {
@@ -811,16 +811,16 @@ void Umat3e::CalculateMaterialResponse( const Vector& StrainVector,
 }
 
 void Umat3e::FinalizeNonLinearIteration ( const Properties& props,
-                                         const GeometryType& geom,
-                                         const Vector& ShapeFunctionsValues,
-                                         const ProcessInfo& CurrentProcessInfo )
+                                          const GeometryType& geom,
+                                          const Vector& ShapeFunctionsValues,
+                                          const ProcessInfo& CurrentProcessInfo )
 {
 }
 
 void Umat3e::FinalizeSolutionStep( const Properties& props,
-                                 const GeometryType& geom,
-                                 const Vector& ShapeFunctionsValues ,
-                                 const ProcessInfo& CurrentProcessInfo )
+                                   const GeometryType& geom,
+                                   const Vector& ShapeFunctionsValues ,
+                                   const ProcessInfo& CurrentProcessInfo )
 {
     noalias(mOldStrain) = mCurrentStrain;
     noalias(mOldStress) = mCurrentStress;

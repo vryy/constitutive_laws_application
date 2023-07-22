@@ -76,7 +76,7 @@ OpenSeesMat::~OpenSeesMat()
 {
 }
 
-int OpenSeesMat::Check( const Kratos::Properties& props, const Kratos::ConstitutiveLaw::GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo )
+int OpenSeesMat::Check( const Kratos::Properties& props, const Kratos::ConstitutiveLaw::GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo ) const
 {
     if(!props.Has(MATERIAL_PARAMETERS))
         KRATOS_THROW_ERROR(std::logic_error, "MATERIAL_PARAMETERS is not given to the properties", "")

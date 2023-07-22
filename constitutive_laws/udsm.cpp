@@ -100,7 +100,7 @@ void UDSM::ResetMaterial ( const Properties& props,
 
 int UDSM::Check ( const Properties& props,
                   const GeometryType& geom,
-                  const ProcessInfo& CurrentProcessInfo )
+                  const ProcessInfo& CurrentProcessInfo ) const
 {
     #ifndef KRATOS_UDSM_LIBRARY_IS_PROVIDED
     if(props.Has( PLAXIS_LIBRARY_NAME ) == false)
@@ -166,6 +166,7 @@ void UDSM::InitializeMaterial ( const Properties& props,
             std::cout << "Loading subroutine " << udsm_name << " in the " << lib_name << " library successfully" << std::endl;
         }
     }
+    #pragma omp atomic
     ++minstances;
     #else
     UserMod = udsm_;

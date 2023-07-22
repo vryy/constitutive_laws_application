@@ -182,6 +182,7 @@ public:
                                         const Vector& ShapeFunctionsValues,
                                         const ProcessInfo& CurrentProcessInfo ) final;
 
+    /// DEPRECATED interface
     void CalculateMaterialResponse ( const Vector& StrainVector,
             const Matrix& DeformationGradient,
             Vector& StressVector,
@@ -201,9 +202,7 @@ public:
 
     int Check ( const Properties& props,
                 const GeometryType& geom,
-                const ProcessInfo& CurrentProcessInfo ) final;
-
-protected:
+                const ProcessInfo& CurrentProcessInfo ) const final;
 
 private:
 

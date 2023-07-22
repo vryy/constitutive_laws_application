@@ -76,7 +76,7 @@ Umat::~Umat()
 {
 }
 
-int Umat::Check( const Kratos::Properties& props, const Kratos::ConstitutiveLaw::GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo )
+int Umat::Check( const Kratos::Properties& props, const Kratos::ConstitutiveLaw::GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo ) const
 {
     return Kratos::ConstitutiveLaw::Check( props, geom, CurrentProcessInfo );
 }

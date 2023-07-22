@@ -52,7 +52,7 @@ Umat3::~Umat3()
     #endif
 }
 
-int Umat3::Check( const Kratos::Properties& props, const GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo )
+int Umat3::Check( const Kratos::Properties& props, const GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo ) const
 {
     #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
     if(props.Has( ABAQUS_LIBRARY_NAME ) == false)

@@ -94,18 +94,18 @@ public:
     virtual ~Umat3();
 
     //clone
-    virtual BaseType::Pointer Clone() const
+    BaseType::Pointer Clone() const final
     {
         BaseType::Pointer p_clone ( new Umat3() );
         return p_clone;
     }
 
-    size_t WorkingSpaceDimension()
+    size_t WorkingSpaceDimension() final
     {
         return 3;
     }
 
-    size_t GetStrainSize()
+    size_t GetStrainSize() const final
     {
         return 6;
     }
@@ -203,7 +203,7 @@ public:
 
     int Check ( const Properties& props,
                 const GeometryType& geom,
-                const ProcessInfo& CurrentProcessInfo ) final;
+                const ProcessInfo& CurrentProcessInfo ) const final;
 
 private:
 
@@ -240,6 +240,7 @@ private:
     static umat_t Umat;
     #endif
 
+    ///
     void CalculateMaterialResponse ( const Vector& StrainVector,
             const Matrix& DeformationGradient,
             Vector& StressVector,
