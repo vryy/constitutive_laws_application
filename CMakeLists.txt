@@ -18,6 +18,7 @@ set( CONSTITUTIVE_LAWS_APPLICATION_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_external_libraries/umat/umat_fortran_wrapper.f
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_external_libraries/umat/xit.f
     ${CMAKE_CURRENT_SOURCE_DIR}/constitutive_laws/udsm.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/constitutive_laws/udsme.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/constitutive_laws/umat2.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/constitutive_laws/umat3.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/constitutive_laws/umat3e.cpp

@@ -28,6 +28,7 @@
 #include "includes/constitutive_law.h"
 #include "constitutive_laws/umat.h"
 #include "constitutive_laws/udsm.h"
+#include "constitutive_laws/udsme.h"
 #include "constitutive_laws/umat2.h"
 #include "constitutive_laws/umat3.h"
 #include "constitutive_laws/umat3e.h"
@@ -60,6 +61,10 @@ void  AddConstitutiveLawsToPython()
 
     class_< UDSMImplicit, bases< ConstitutiveLawBaseType >, boost::noncopyable >
     ( "UDSMImplicit", init<>() )
+    ;
+
+    class_< UDSMeImplicit, bases< ConstitutiveLawBaseType >, boost::noncopyable >
+    ( "UDSMeImplicit", init<>() )
     ;
 
     class_< Umat2, bases< ConstitutiveLawBaseType >, boost::noncopyable >
