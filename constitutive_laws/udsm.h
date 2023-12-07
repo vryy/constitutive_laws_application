@@ -49,59 +49,61 @@ class UDSM : public ConstitutiveLaw
             return p_clone;
         }
 
-        ConstitutiveLaw::StrainMeasure GetStrainMeasure() final
+        ConstitutiveLaw::StrainMeasure GetStrainMeasure() override
         {
             return StrainMeasure_Infinitesimal;
         }
 
-        ConstitutiveLaw::StressMeasure GetStressMeasure() final
+        ConstitutiveLaw::StressMeasure GetStressMeasure() override
         {
             return StressMeasure_Cauchy;
         }
 
-        void GetLawFeatures(Features& rFeatures) final
+        void GetLawFeatures(Features& rFeatures) override
         {
             rFeatures.SetStrainMeasure(this->GetStrainMeasure());
         }
 
-        bool IsIncremental() final
+        bool IsIncremental() override
         {
             return true;
         }
 
-        bool Has ( const Variable<double>& rThisVariable ) final;
+        bool Has ( const Variable<double>& rThisVariable ) override;
 
-        bool Has ( const Variable<Vector>& rThisVariable ) final;
+        bool Has ( const Variable<Vector>& rThisVariable ) override;
 
-        double& GetValue ( const Variable<double>& rThisVariable, double& rValue ) final;
+        double& GetValue ( const Variable<double>& rThisVariable, double& rValue ) override;
 
-        Vector& GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue ) final;
+        Vector& GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue ) override;
 
-        void SetValue ( const Variable<int>& rThisVariable, const int& rValue, const ProcessInfo& rCurrentProcessInfo ) final;
+        void SetValue ( const Variable<int>& rThisVariable, const int& rValue, const ProcessInfo& rCurrentProcessInfo ) override;
 
-        void SetValue ( const Variable<Vector>& rThisVariable, const Vector& rValue, const ProcessInfo& rCurrentProcessInfo ) final;
+        void SetValue ( const Variable<double>& rThisVariable, const double& rValue, const ProcessInfo& rCurrentProcessInfo ) override;
+
+        void SetValue ( const Variable<Vector>& rThisVariable, const Vector& rValue, const ProcessInfo& rCurrentProcessInfo ) override;
 
         void ResetMaterial ( const Properties& props,
                              const GeometryType& geom,
-                             const Vector& ShapeFunctionsValues ) final;
+                             const Vector& ShapeFunctionsValues ) override;
 
         int Check ( const Properties& props,
                     const GeometryType& geom,
-                    const ProcessInfo& CurrentProcessInfo ) const final;
+                    const ProcessInfo& CurrentProcessInfo ) const override;
 
         void InitializeMaterial ( const Properties& props,
                                   const GeometryType& geom,
-                                  const Vector& ShapeFunctionsValues ) final;
+                                  const Vector& ShapeFunctionsValues ) override;
 
         void InitializeSolutionStep ( const Properties& props,
                                       const GeometryType& geom,
                                       const Vector& ShapeFunctionsValues ,
-                                      const ProcessInfo& CurrentProcessInfo ) final;
+                                      const ProcessInfo& CurrentProcessInfo ) override;
 
         void InitializeNonLinearIteration ( const Properties& props,
                                             const GeometryType& geom,
                                             const Vector& ShapeFunctionsValues,
-                                            const ProcessInfo& CurrentProcessInfo ) final;
+                                            const ProcessInfo& CurrentProcessInfo ) override;
 
         /**
          * Computes the material response in terms of Cauchy stresses and constitutive tensor
@@ -125,12 +127,12 @@ class UDSM : public ConstitutiveLaw
         void FinalizeNonLinearIteration ( const Properties& props,
                                           const GeometryType& geom,
                                           const Vector& ShapeFunctionsValues,
-                                          const ProcessInfo& CurrentProcessInfo ) final;
+                                          const ProcessInfo& CurrentProcessInfo ) override;
 
         void FinalizeSolutionStep ( const Properties& props,
                                     const GeometryType& geom,
                                     const Vector& ShapeFunctionsValues ,
-                                    const ProcessInfo& CurrentProcessInfo ) final;
+                                    const ProcessInfo& CurrentProcessInfo ) override;
 
     protected:
 
@@ -143,6 +145,8 @@ class UDSM : public ConstitutiveLaw
         Vector mLastStrain;                 // to store the converged strain in the last step
         Vector mCurrentStress;              // link with Sig variable   // this is constitutive stress
         Vector mLastStress;                 // link with Sig0 variable  // this is constitutive stress
+        Vector mPrestress;
+        double mPrestressFactor;
         double mCurrentExcessPorePressure;  // link with Swp variable
         double mLastExcessPorePressure;     // link with Swp0 variable
         Vector mCurrentStateVariables;      // link with StVar variable
@@ -158,6 +162,8 @@ class UDSM : public ConstitutiveLaw
         udsm_t UserMod;
         #endif
 
+        void InitializeMaterial( int ModelNumber, int IsUndrained, const Vector& Props );
+
         //serialization
         friend class Serializer;
 
@@ -172,9 +178,9 @@ class UDSM : public ConstitutiveLaw
             KRATOS_SERIALIZE_LOAD_BASE_CLASS ( rSerializer, ConstitutiveLaw )
         }
 
-        void VectorTo3DVector(const Vector& vector, Vector& vector_3d) const;
-        void Vector3DToVector(const Vector& vector_3d, Vector& vector) const;
-        void Vector1DToMatrix(const Vector& D, Matrix& A, const int& non_sym) const;
+        static void VectorTo3DVector(const Vector& vector, Vector& vector_3d);
+        static void Vector3DToVector(const Vector& vector_3d, Vector& vector);
+        static void Vector1DToMatrix(const Vector& D, Matrix& A, int non_sym);
 }; // Class UDSM
 
 class UDSMImplex : public UDSM

@@ -41,26 +41,20 @@ UDSM::~UDSM()
 
 bool UDSM::Has ( const Variable<double>& rThisVariable )
 {
-//    if(rThisVariable == PLASTICITY_INDICATOR)
-//        return true;
     return false;
 }
 
 bool UDSM::Has ( const Variable<Vector>& rThisVariable )
 {
-//    if(rThisVariable == MATERIAL_PARAMETERS)
-//        return true;
     if(rThisVariable == INTERNAL_VARIABLES)
         return true;
-//    if(rThisVariable == STRESSES)
-//        return true;
+    if(rThisVariable == STRESSES)
+        return true;
     return false;
 }
 
 double& UDSM::GetValue ( const Variable<double>& rThisVariable, double& rValue )
 {
-//    if(rThisVariable == PLASTICITY_INDICATOR)
-//        rValue = mPlasticState;
     return rValue;
 }
 
@@ -86,17 +80,47 @@ Vector& UDSM::GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue )
 void UDSM::SetValue ( const Variable<int>& rThisVariable,
                       const int& rValue,
                       const ProcessInfo& rCurrentProcessInfo )
-{}
+{
+    if( rThisVariable == PARENT_ELEMENT_ID )
+        mElemId = rValue;
+    if( rThisVariable == INTEGRATION_POINT_INDEX )
+        mGaussId = rValue;
+}
+
+void UDSM::SetValue ( const Variable<double>& rThisVariable,
+                      const double& rValue,
+                      const ProcessInfo& rCurrentProcessInfo )
+{
+    if (rThisVariable == PRESTRESS_FACTOR )
+        mPrestressFactor = rValue;
+}
 
 void UDSM::SetValue ( const Variable<Vector>& rThisVariable,
                       const Vector& rValue,
                       const ProcessInfo& rCurrentProcessInfo )
-{}
+{
+    if(rThisVariable == PRESTRESS || rThisVariable == INSITU_STRESS)
+    {
+        if (mPrestress.size() != rValue.size())
+            mPrestress.resize(rValue.size());
+        noalias(mPrestress) = rValue;
+    }
+}
 
 void UDSM::ResetMaterial ( const Properties& props,
                            const GeometryType& geom,
                            const Vector& ShapeFunctionsValues )
-{}
+{
+    mCurrentStrain.clear();
+    mLastStrain.clear();
+    mCurrentStateVariables.clear();
+    mLastStateVariables.clear();
+    mCurrentExcessPorePressure = 0.0;
+    mLastExcessPorePressure = 0.0;
+
+    noalias(mLastStress) = -mPrestressFactor*mPrestress;
+    noalias(mCurrentStress) = mLastStress;
+}
 
 int UDSM::Check ( const Properties& props,
                   const GeometryType& geom,
@@ -132,14 +156,17 @@ void UDSM::InitializeMaterial ( const Properties& props,
                                 const Vector& ShapeFunctionsValues )
 {
     // retrieve soil model number
-    mModelNumber = props[SOIL_MODEL_NUMBER];
+    int ModelNumber = static_cast<int>(props[SOIL_MODEL_NUMBER]);
 
     // retrieve undrained case
-    int IsUndr = static_cast<int>(props[IS_UNDRAINED]);
+    int IsUndrained = static_cast<int>(props[IS_UNDRAINED]);
 
-    Vector Props = props[MATERIAL_PARAMETERS];
+    // retrieve material properties
+    const Vector& Props = props[MATERIAL_PARAMETERS];
 
-    #ifndef KRATOS_UDSM_LIBRARY_IS_PROVIDED
+#ifdef KRATOS_UDSM_LIBRARY_IS_PROVIDED
+    UserMod = udsm_;
+#else
     if (minstances == 0)
     {
         // get the library name and load the udsm subroutine
@@ -168,29 +195,37 @@ void UDSM::InitializeMaterial ( const Properties& props,
     }
     #pragma omp atomic
     ++minstances;
-    #else
-    UserMod = udsm_;
-    #endif
+#endif
+
+    // initialize the material
+    this->InitializeMaterial( ModelNumber, IsUndrained, Props );
+}
+
+void UDSM::InitializeMaterial ( int ModelNumber,
+                                int IsUndrained,
+                                const Vector& Props )
+{
 // KRATOS_WATCH(__LINE__)
-// KRATOS_WATCH(mModelNumber)
+// KRATOS_WATCH(ModelNumber)
     // retrieve number of state variables
     int nStat;
     int IDTask = 4;
-    // UserMod(&IDTask, &mModelNumber, &IsUndr, NULL, NULL, NULL, NULL, NULL,
+    // UserMod(&IDTask, &ModelNumber, &IsUndrained, NULL, NULL, NULL, NULL, NULL,
     //         NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
     //         NULL, NULL, NULL, NULL, &nStat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
-    int dummy_iStep=0, dummy_iTer=0, dummy_Iel=0, dummy_Int=0, dummy_ipl, dummy_nonsym,
+    int iStep=0, iTer=0, Iel=mElemId, Int=mGaussId, dummy_ipl, dummy_nonsym,
         dummy_iStrsDep, dummy_iTimeDep, dummy_iTang, dummy_iPrjDir, dummy_iPrjLen;
     int iAbort;
     double dummyX, dummyY, dummyZ;
     double dummy_T0, dummy_dT;
     double dummy_Sig0, dummy_Swp0, dummy_Stvar0, dummy_dEps, dummy_D, dummy_BulkW,
         dummy_Sig, dummy_Swp, dummy_StVar;
-    UserMod(&IDTask, &mModelNumber, &IsUndr,
-            &dummy_iStep, &dummy_iTer, &dummy_Iel, &dummy_Int,
+    double* props = const_cast<double*>(&Props[0]); // cast out the const'ness to use the pointer value and let hope that the UDSM does not change any input parameter.
+    UserMod(&IDTask, &ModelNumber, &IsUndrained,
+            &iStep, &iTer, &Iel, &Int,
             &dummyX, &dummyY, &dummyZ, &dummy_T0, &dummy_dT,
-            &Props[0],
+            props,
             &dummy_Sig0, &dummy_Swp0, &dummy_Stvar0, &dummy_dEps, &dummy_D, &dummy_BulkW,
             &dummy_Sig, &dummy_Swp, &dummy_StVar, &dummy_ipl,
             &nStat,
@@ -213,6 +248,10 @@ void UDSM::InitializeMaterial ( const Properties& props,
         mLastStress.resize(6);
     noalias(mLastStress) = ZeroVector(6);
 
+    if(mPrestress.size() != 6)
+        mPrestress.resize(6);
+    noalias(mPrestress) = ZeroVector(6);
+
     if(mCurrentStrain.size() != 6)
         mCurrentStrain.resize(6);
     noalias(mCurrentStrain) = ZeroVector(6);
@@ -223,20 +262,31 @@ void UDSM::InitializeMaterial ( const Properties& props,
 
     mCurrentExcessPorePressure = 0.0;
     mLastExcessPorePressure = 0.0;
+    mPrestressFactor = 1.0;
     mPlasticState = 0;
+
+    mStep = 0;
+    mIter = 0;
+
+    // TODO initialize the internal variables by calling IDTask = 1
 }
 
 void UDSM::InitializeSolutionStep ( const Properties& props,
                                     const GeometryType& geom,
                                     const Vector& ShapeFunctionsValues ,
                                     const ProcessInfo& CurrentProcessInfo )
-{}
+{
+    ++mStep;
+    mIter = 0;
+}
 
 void UDSM::InitializeNonLinearIteration ( const Properties& props,
                                           const GeometryType& geom,
                                           const Vector& ShapeFunctionsValues,
                                           const ProcessInfo& CurrentProcessInfo )
-{}
+{
+    ++mIter;
+}
 
 void UDSM::CalculateMaterialResponseCauchy( Parameters& parameters )
 {
@@ -286,7 +336,7 @@ void UDSM::FinalizeSolutionStep ( const Properties& props,
     mLastExcessPorePressure = mCurrentExcessPorePressure;
 }
 
-void UDSM::VectorTo3DVector(const Vector& vector, Vector& vector_3d) const
+void UDSM::VectorTo3DVector(const Vector& vector, Vector& vector_3d)
 {
     if (vector.size() == 3)
     {
@@ -303,7 +353,7 @@ void UDSM::VectorTo3DVector(const Vector& vector, Vector& vector_3d) const
     }
 }
 
-void UDSM::Vector3DToVector(const Vector& vector_3d, Vector& vector) const
+void UDSM::Vector3DToVector(const Vector& vector_3d, Vector& vector)
 {
     if (vector.size() == 3)
     {
@@ -317,7 +367,7 @@ void UDSM::Vector3DToVector(const Vector& vector_3d, Vector& vector) const
     }
 }
 
-void UDSM::Vector1DToMatrix(const Vector& D, Matrix& A, const int& non_sym) const
+void UDSM::Vector1DToMatrix(const Vector& D, Matrix& A, int non_sym)
 {
     if (A.size1() == 3)
     {
@@ -361,20 +411,20 @@ void UDSM::Vector1DToMatrix(const Vector& D, Matrix& A, const int& non_sym) cons
 /*********** UDSM Implicit-Explicit ******************************************/
 /*****************************************************************************/
 
-
 void UDSMImplex::CalculateMaterialResponse ( const Vector& StrainVector,
-                                       const Matrix& DeformationGradient,
-                                       Vector& StressVector,
-                                       Matrix& AlgorithmicTangent,
-                                       const ProcessInfo& CurrentProcessInfo,
-                                       const Properties& props,
-                                       const GeometryType& geom,
-                                       const Vector& ShapeFunctionsValues,
-                                       bool CalculateStresses,
-                                       int CalculateTangent,
-                                       bool SaveInternalVariables )
+                                             const Matrix& DeformationGradient,
+                                             Vector& StressVector,
+                                             Matrix& AlgorithmicTangent,
+                                             const ProcessInfo& CurrentProcessInfo,
+                                             const Properties& props,
+                                             const GeometryType& geom,
+                                             const Vector& ShapeFunctionsValues,
+                                             bool CalculateStresses,
+                                             int CalculateTangent,
+                                             bool SaveInternalVariables )
 {
     int IDTask;
+    int ModelNumber = static_cast<int>(props[SOIL_MODEL_NUMBER]);
     int IsUndr = static_cast<int>(props[IS_UNDRAINED]);
     Vector Props = props[MATERIAL_PARAMETERS];
     Vector D(36);
@@ -424,7 +474,7 @@ void UDSMImplex::CalculateMaterialResponse ( const Vector& StrainVector,
     // initialize D with elastic matrix
     IDTask = 6;
     UserMod( &IDTask,
-             &mModelNumber,
+             &ModelNumber,
              &IsUndr,
              NULL, // iStep
              NULL, // iter
@@ -455,7 +505,7 @@ void UDSMImplex::CalculateMaterialResponse ( const Vector& StrainVector,
 
     // export the stiffness matrix
     IDTask = 5;
-    UserMod(&IDTask, &mModelNumber, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+    UserMod(&IDTask, &ModelNumber, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
             NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
             &NonSym,
             &iStrsDep,
@@ -489,10 +539,10 @@ void UDSMImplex::CalculateMaterialResponse ( const Vector& StrainVector,
     double omega = Props[UDSM_RELAXATION_FACTOR]; // relaxation factor
     noalias(StressVector) = mCurrentStress + omega*prod(AlgorithmicTangent, delta_strain);
 
-    // calculate the constitutive stress
+    // calculate the stress
     IDTask = 2;
     UserMod( &IDTask,
-             &mModelNumber,
+             &ModelNumber,
              &IsUndr,
              NULL, // iStep
              NULL, // iter
@@ -547,28 +597,21 @@ void UDSMImplex::CalculateMaterialResponse ( const Vector& StrainVector,
 //    }
 }
 
-
-
-
 /*****************************************************************************/
 /*********** UDSM Implicit ***************************************************/
 /*****************************************************************************/
 
-
-
-
-
 void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
-                                       const Matrix& DeformationGradient,
-                                       Vector& StressVector,
-                                       Matrix& AlgorithmicTangent,
-                                       const ProcessInfo& CurrentProcessInfo,
-                                       const Properties& props,
-                                       const GeometryType& geom,
-                                       const Vector& ShapeFunctionsValues,
-                                       bool CalculateStresses,
-                                       int CalculateTangent,
-                                       bool SaveInternalVariables )
+                                               const Matrix& DeformationGradient,
+                                               Vector& StressVector,
+                                               Matrix& AlgorithmicTangent,
+                                               const ProcessInfo& CurrentProcessInfo,
+                                               const Properties& props,
+                                               const GeometryType& geom,
+                                               const Vector& ShapeFunctionsValues,
+                                               bool CalculateStresses,
+                                               int CalculateTangent,
+                                               bool SaveInternalVariables )
 {
     if (CurrentProcessInfo[SET_CALCULATE_REACTION])
     {
@@ -584,6 +627,7 @@ void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
     this->VectorTo3DVector(StrainVector, mCurrentStrain);
 
     int IDTask;
+    int ModelNumber = static_cast<int>(props[SOIL_MODEL_NUMBER]);
     int IsUndr = static_cast<int>(props[IS_UNDRAINED]);
     Vector Props = props[MATERIAL_PARAMETERS];
     Vector D(36);
@@ -592,11 +636,11 @@ void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
     double delta_time = CurrentProcessInfo[DELTA_TIME];
     int iPl;
     int NonSym;
-    int iStrsDep, iTang, iTimeDep, iAbort = 0;
+    int iStrsDep, iTang = 0, iTimeDep, iAbort = 0;
     int iPrjDir, iPrjLen;
     int nStat = mCurrentStateVariables.size();
     double dummyX, dummyY, dummyZ;
-    int dummy_iStep=0, dummy_iTer=0, dummy_Iel=0, dummy_Int=0;
+    int iStep=mStep, iTer=mIter, Iel=mElemId, Int=mGaussId;
 
     if (IsUndr)
     {
@@ -639,15 +683,15 @@ void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
     // initialize D with elastic matrix
     IDTask = 6;
     UserMod( &IDTask,
-             &mModelNumber,
+             &ModelNumber,
              &IsUndr,
-             &dummy_iStep, // iStep
-             &dummy_iTer, // iter
-             &dummy_Iel, // Iel
-             &dummy_Int, // Int
+             &iStep,        // iStep
+             &iTer,         // iter
+             &Iel,          // Iel
+             &Int,          // Int
              &dummyX, &dummyY, &dummyZ, // X, Y, Z
-             &time, // Time0
-             &delta_time, // dTime
+             &time,         // Time0
+             &delta_time,   // dTime
              &Props[0],
              &Sig0[0],
              &Swp0,
@@ -668,18 +712,18 @@ void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
              &iPrjLen,
              &iAbort );
 
-    // calculate the consitutive stress
+    // calculate the stress
     IDTask = 2;
     UserMod( &IDTask,
-             &mModelNumber,
+             &ModelNumber,
              &IsUndr,
-             &dummy_iStep, // iStep
-             &dummy_iTer, // iter
-             &dummy_Iel, // Iel
-             &dummy_Int, // Int
+             &iStep,        // iStep
+             &iTer,         // iter
+             &Iel,          // Iel
+             &Int,          // Int
              &dummyX, &dummyY, &dummyZ, // X, Y, Z
-             &time, // Time0
-             &delta_time, // dTime
+             &time,         // Time0
+             &delta_time,   // dTime
              &Props[0],
              &Sig0[0],
              &Swp0,
@@ -709,18 +753,18 @@ void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
     // export the plastic state
     mPlasticState = iPl;
 
-    // calculate the material stiffness
-    IDTask = 3;
+    // obtain the stiffness matrix properties
+    IDTask = 5;
     UserMod( &IDTask,
-             &mModelNumber,
+             &ModelNumber,
              &IsUndr,
-             &dummy_iStep, // iStep
-             &dummy_iTer, // iter
-             &dummy_Iel, // Iel
-             &dummy_Int, // Int
+             &iStep,        // iStep
+             &iTer,         // iter
+             &Iel,          // Iel
+             &Int,          // Int
              &dummyX, &dummyY, &dummyZ, // X, Y, Z
-             &time, // Time0
-             &delta_time, // dTime
+             &time,         // Time0
+             &delta_time,   // dTime
              &Props[0],
              &Sig0[0],
              &Swp0,
@@ -740,6 +784,46 @@ void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
              &iPrjDir,
              &iPrjLen,
              &iAbort );
+
+    // if (iTang == 1)
+    // {
+        // calculate the material stiffness
+        IDTask = 3;
+        UserMod( &IDTask,
+                 &ModelNumber,
+                 &IsUndr,
+                 &iStep,        // iStep
+                 &iTer,         // iter
+                 &Iel,          // Iel
+                 &Int,          // Int
+                 &dummyX, &dummyY, &dummyZ, // X, Y, Z
+                 &time,         // Time0
+                 &delta_time,   // dTime
+                 &Props[0],
+                 &Sig0[0],
+                 &Swp0,
+                 &StVar0[0],
+                 &dEps[0],
+                 &D[0],
+                 &BulkW,
+                 &mCurrentStress[0],
+                 &mCurrentExcessPorePressure,
+                 &mCurrentStateVariables[0],
+                 &iPl,
+                 &nStat,
+                 &NonSym,
+                 &iStrsDep,
+                 &iTimeDep,
+                 &iTang,
+                 &iPrjDir,
+                 &iPrjLen,
+                 &iAbort );
+    // }
+    // else if (iTang == 0)
+    // {
+    //     // TODO approximate the tangent using finite difference scheme
+    // }
+
 //    KRATOS_WATCH(D)
 //    iAbort=1;
 
@@ -757,38 +841,6 @@ void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
         // export the stress
         this->Vector3DToVector(mCurrentStress, StressVector);
     }
-
-    // obtain the stiffness matrix properties
-    IDTask = 5;
-    UserMod( &IDTask,
-             &mModelNumber,
-             &IsUndr,
-             &dummy_iStep, // iStep
-             &dummy_iTer, // iter
-             &dummy_Iel, // Iel
-             &dummy_Int, // Int
-             &dummyX, &dummyY, &dummyZ, // X, Y, Z
-             &time, // Time0
-             &delta_time, // dTime
-             &Props[0],
-             &Sig0[0],
-             &Swp0,
-             &StVar0[0],
-             &dEps[0],
-             &D[0],
-             &BulkW,
-             &mCurrentStress[0],
-             &mCurrentExcessPorePressure,
-             &mCurrentStateVariables[0],
-             &iPl,
-             &nStat,
-             &NonSym,
-             &iStrsDep,
-             &iTimeDep,
-             &iTang,
-             &iPrjDir,
-             &iPrjLen,
-             &iAbort );
 
     if (CalculateTangent)
     {

@@ -8,24 +8,11 @@
 namespace Kratos
 {
 
-unsigned long long UDSMe::minstances = 0;
-void* UDSMe::mp_udsm_handle = 0;
-udsm_t UDSMe::UserMod = 0;
-
-UDSMe::UDSMe()
-{
-    mModelNumber = 1; // default model number
-}
+UDSMe::UDSMe() : BaseType()
+{}
 
 UDSMe::~UDSMe()
-{
-    --minstances;
-    if(minstances == 0)
-    {
-        dlclose(mp_udsm_handle);
-        std::cout << "Successfully unload the UDSM shared library/DLL" << std::endl;
-    }
-}
+{}
 
 bool UDSMe::Has ( const Variable<int>& rThisVariable )
 {
@@ -47,7 +34,7 @@ bool UDSMe::Has ( const Variable<double>& rThisVariable )
 //        return true;
     if(rThisVariable == BULK_W)
         return true;
-    return false;
+    return BaseType::Has( rThisVariable );
 }
 
 bool UDSMe::Has ( const Variable<Vector>& rThisVariable )
@@ -58,7 +45,7 @@ bool UDSMe::Has ( const Variable<Vector>& rThisVariable )
         return true;
     if(rThisVariable == STRESSES)
         return true;
-    return false;
+    return BaseType::Has( rThisVariable );
 }
 
 // bool UDSMe::Has ( const Variable<std::string>& rThisVariable )
@@ -92,7 +79,7 @@ double& UDSMe::GetValue ( const Variable<double>& rThisVariable, double& rValue 
         rValue = mPrestressFactor;
     if(rThisVariable == BULK_W)
         rValue = mBulkW;
-    return rValue;
+    return BaseType::GetValue( rThisVariable, rValue );
 }
 
 Vector& UDSMe::GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue )
@@ -125,7 +112,7 @@ Vector& UDSMe::GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue 
         noalias(rValue) = mPrestress;
     }
 
-    return rValue;
+    return BaseType::GetValue( rThisVariable, rValue );
 }
 
 std::string& UDSMe::GetValue ( const Variable<std::string>& rThisVariable, std::string& rValue )
@@ -138,88 +125,64 @@ std::string& UDSMe::GetValue ( const Variable<std::string>& rThisVariable, std::
 }
 
 void UDSMe::SetValue ( const Variable<int>& rThisVariable,
-                      const int& rValue,
-                      const ProcessInfo& rCurrentProcessInfo )
+                       const int& rValue,
+                       const ProcessInfo& rCurrentProcessInfo )
 {
     if (rThisVariable == SOIL_MODEL_NUMBER)
         mModelNumber = rValue;
+    else
+        BaseType::SetValue( rThisVariable, rValue, rCurrentProcessInfo );
 }
 
 void UDSMe::SetValue ( const Variable<bool>& rThisVariable,
-                      const bool& rValue,
-                      const ProcessInfo& rCurrentProcessInfo )
+                       const bool& rValue,
+                       const ProcessInfo& rCurrentProcessInfo )
 {
     if (rThisVariable == IS_UNDRAINED)
         mIsUndr = static_cast<int>(rValue);
 }
 
 void UDSMe::SetValue ( const Variable<double>& rThisVariable,
-                      const double& rValue,
-                      const ProcessInfo& rCurrentProcessInfo )
+                       const double& rValue,
+                       const ProcessInfo& rCurrentProcessInfo )
 {
     if (rThisVariable == BULK_W)
         mBulkW = rValue;
-    if (rThisVariable == PRESTRESS_FACTOR )
-        mPrestressFactor = rValue;
+    else
+        BaseType::SetValue( rThisVariable, rValue, rCurrentProcessInfo );
 }
 
 void UDSMe::SetValue ( const Variable<Vector>& rThisVariable,
-                      const Vector& rValue,
-                      const ProcessInfo& rCurrentProcessInfo )
+                       const Vector& rValue,
+                       const ProcessInfo& rCurrentProcessInfo )
 {
-    if(rThisVariable == PRESTRESS || rThisVariable == INSITU_STRESS)
-    {
-        if (mPrestress.size() != rValue.size())
-            mPrestress.resize(rValue.size());
-        noalias(mPrestress) = rValue;
-    }
     if ( rThisVariable == MATERIAL_PARAMETERS )
     {
         if(mProps.size() != rValue.size())
             mProps.resize(rValue.size(), false);
         noalias(mProps) = rValue;
     }
+    else
+        BaseType::SetValue( rThisVariable, rValue, rCurrentProcessInfo );
 }
 
 void UDSMe::SetValue ( const Variable<std::string>& rThisVariable,
-                      const std::string& rValue,
-                      const ProcessInfo& rCurrentProcessInfo )
+                       const std::string& rValue,
+                       const ProcessInfo& rCurrentProcessInfo )
 {
     if ( rThisVariable == PLAXIS_LIBRARY_NAME )
     {
         mLibName = rValue;
     }
-    if ( rThisVariable == USERMOD_NAME )
+    else if ( rThisVariable == USERMOD_NAME )
     {
         mName = rValue;
     }
 }
 
-void UDSMe::ResetMaterial ( const Properties& props,
-                           const GeometryType& geom,
-                           const Vector& ShapeFunctionsValues )
-{
-    mCurrentStrain.clear();
-    mLastStrain.clear();
-    mCurrentStateVariables.clear();
-    mLastStateVariables.clear();
-    mCurrentExcessPorePressure = 0.0;
-    mLastExcessPorePressure = 0.0;
-
-    noalias(mLastStress) = -mPrestressFactor*mPrestress;
-    noalias(mCurrentStress) = mLastStress;
-}
-
-int UDSMe::Check ( const Properties& props,
-                  const GeometryType& geom,
-                  const ProcessInfo& CurrentProcessInfo ) const
-{
-    return 0;
-}
-
 void UDSMe::InitializeMaterial ( const Properties& props,
-                                const GeometryType& geom,
-                                const Vector& ShapeFunctionsValues )
+                                 const GeometryType& geom,
+                                 const Vector& ShapeFunctionsValues )
 {
     // retrieve soil model number
     if (props.Has(SOIL_MODEL_NUMBER))
@@ -245,6 +208,9 @@ void UDSMe::InitializeMaterial ( const Properties& props,
     if (props.Has(BULK_W))
         mBulkW = props[BULK_W];
 
+#ifdef KRATOS_UDSM_LIBRARY_IS_PROVIDED
+    UserMod = udsm_;
+#else
     if (minstances == 0)
     {
         mp_udsm_handle = dlopen(mLibName.c_str(), RTLD_NOW | RTLD_GLOBAL);
@@ -267,215 +233,29 @@ void UDSMe::InitializeMaterial ( const Properties& props,
             std::cout << "Loading subroutine " << mName << " in the " << mLibName << " library successfully" << std::endl;
         }
     }
+    #pragma omp atomic
     ++minstances;
+#endif
 
-// KRATOS_WATCH(__LINE__)
-// KRATOS_WATCH(mModelNumber)
-    // retrieve number of state variables
-    int nStat;
-    int IDTask = 4;
-    // UserMod(&IDTask, &mModelNumber, &mIsUndr, NULL, NULL, NULL, NULL, NULL,
-    //         NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-    //         NULL, NULL, NULL, NULL, &nStat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-
-    int dummy_iStep=0, dummy_iTer=0, dummy_Iel=0, dummy_Int=0, dummy_ipl, dummy_nonsym,
-        dummy_iStrsDep, dummy_iTimeDep, dummy_iTang, dummy_iPrjDir, dummy_iPrjLen;
-    int iAbort;
-    double dummyX, dummyY, dummyZ;
-    double dummy_T0, dummy_dT;
-    double dummy_Sig0, dummy_Swp0, dummy_Stvar0, dummy_dEps, dummy_D, dummy_BulkW,
-        dummy_Sig, dummy_Swp, dummy_StVar;
-    UserMod(&IDTask, &mModelNumber, &mIsUndr,
-            &dummy_iStep, &dummy_iTer, &dummy_Iel, &dummy_Int,
-            &dummyX, &dummyY, &dummyZ, &dummy_T0, &dummy_dT,
-            &mProps[0],
-            &dummy_Sig0, &dummy_Swp0, &dummy_Stvar0, &dummy_dEps, &dummy_D, &dummy_BulkW,
-            &dummy_Sig, &dummy_Swp, &dummy_StVar, &dummy_ipl,
-            &nStat,
-            &dummy_nonsym, &dummy_iStrsDep, &dummy_iTimeDep, &dummy_iTang, &dummy_iPrjDir, &dummy_iPrjLen,
-            &iAbort);
-
-    if(mCurrentStateVariables.size() != nStat)
-        mCurrentStateVariables.resize(nStat);
-    mCurrentStateVariables = ZeroVector(nStat);
-
-    if(mLastStateVariables.size() != nStat)
-        mLastStateVariables.resize(nStat);
-    mLastStateVariables = ZeroVector(nStat);
-
-    if(mCurrentStress.size() != 6)
-        mCurrentStress.resize(6);
-    noalias(mCurrentStress) = ZeroVector(6);
-
-    if(mLastStress.size() != 6)
-        mLastStress.resize(6);
-    noalias(mLastStress) = ZeroVector(6);
-
-    if(mPrestress.size() != 6)
-        mPrestress.resize(6);
-    noalias(mPrestress) = ZeroVector(6);
-
-    if(mCurrentStrain.size() != 6)
-        mCurrentStrain.resize(6);
-    noalias(mCurrentStrain) = ZeroVector(6);
-
-    if(mLastStrain.size() != 6)
-        mLastStrain.resize(6);
-    noalias(mLastStrain) = ZeroVector(6);
-
-    mCurrentExcessPorePressure = 0.0;
-    mLastExcessPorePressure = 0.0;
-    mPrestressFactor = 1.0;
-    mPlasticState = 0;
-}
-
-void UDSMe::InitializeSolutionStep ( const Properties& props,
-                                    const GeometryType& geom,
-                                    const Vector& ShapeFunctionsValues ,
-                                    const ProcessInfo& CurrentProcessInfo )
-{}
-
-void UDSMe::InitializeNonLinearIteration ( const Properties& props,
-                                          const GeometryType& geom,
-                                          const Vector& ShapeFunctionsValues,
-                                          const ProcessInfo& CurrentProcessInfo )
-{}
-
-void UDSMe::CalculateMaterialResponseCauchy( Parameters& parameters )
-{
-    this->CalculateMaterialResponse( parameters.GetStrainVector()
-        , parameters.GetDeformationGradientF()
-        , parameters.GetStressVector()
-        , parameters.GetConstitutiveMatrix()
-        , parameters.GetProcessInfo()
-        , parameters.GetMaterialProperties()
-        , parameters.GetElementGeometry()
-        , parameters.GetShapeFunctionsValues()
-        , parameters.IsSetStressVector()
-        , parameters.IsSetConstitutiveMatrix()
-        , true
-    );
-}
-
-void UDSMe::CalculateMaterialResponse ( const Vector& StrainVector,
-                                       const Matrix& DeformationGradient,
-                                       Vector& StressVector,
-                                       Matrix& AlgorithmicTangent,
-                                       const ProcessInfo& CurrentProcessInfo,
-                                       const Properties& props,
-                                       const GeometryType& geom,
-                                       const Vector& ShapeFunctionsValues,
-                                       bool CalculateStresses,
-                                       int CalculateTangent,
-                                       bool SaveInternalVariables )
-{
-    KRATOS_THROW_ERROR(std::logic_error, "Calling base class function", __FUNCTION__)
-}
-
-void UDSMe::FinalizeNonLinearIteration ( const Properties& props,
-                                        const GeometryType& geom,
-                                        const Vector& ShapeFunctionsValues,
-                                        const ProcessInfo& CurrentProcessInfo )
-{}
-
-void UDSMe::FinalizeSolutionStep ( const Properties& props,
-                                  const GeometryType& geom,
-                                  const Vector& ShapeFunctionsValues ,
-                                  const ProcessInfo& CurrentProcessInfo )
-{
-    noalias(mLastStrain) = mCurrentStrain;
-    noalias(mLastStress) = mCurrentStress;
-    noalias(mLastStateVariables) = mCurrentStateVariables;
-    mLastExcessPorePressure = mCurrentExcessPorePressure;
-}
-
-void UDSMe::VectorTo3DVector(const Vector& vector, Vector& vector_3d) const
-{
-    if (vector.size() == 3)
-    {
-        vector_3d[0] = vector[0];
-        vector_3d[1] = vector[1];
-        vector_3d[2] = 0.0;
-        vector_3d[3] = vector[2];
-        vector_3d[4] = 0.0;
-        vector_3d[5] = 0.0;
-    }
-    else if (vector.size() == 6)
-    {
-        noalias(vector_3d) = vector;
-    }
-}
-
-void UDSMe::Vector3DToVector(const Vector& vector_3d, Vector& vector) const
-{
-    if (vector.size() == 3)
-    {
-        vector[0] = vector_3d[0];
-        vector[1] = vector_3d[1];
-        vector[2] = vector_3d[3];
-    }
-    else if (vector.size() == 6)
-    {
-        noalias(vector) = vector_3d;
-    }
-}
-
-void UDSMe::Vector1DToMatrix(const Vector& D, Matrix& A, const int& non_sym) const
-{
-    if (A.size1() == 3)
-    {
-        if(non_sym != 0)
-        {
-            for(unsigned int i = 0; i < 3; ++i)
-                for(unsigned int j = 0; j < 3; ++j)
-                    A(i, j) = D[Umat3::PS[i] + 6*Umat3::PS[j]];
-        }
-        else
-        {
-            for(unsigned int i = 0; i < 3; ++i)
-                for(unsigned int j = i; j < 3; ++j)
-                    A(i, j) = D[Umat3::PS[i] + 6*Umat3::PS[j]];
-            for(unsigned int i = 0; i < 3; ++i)
-                for(unsigned int j = 0; j < i; ++j)
-                    A(i, j) = A(j, i);
-        }
-    }
-    else if (A.size1() == 6)
-    {
-        if(non_sym != 0)
-        {
-            for(unsigned int i = 0; i < 6; ++i)
-                for(unsigned int j = 0; j < 6; ++j)
-                    A(i, j) = D[i + 6*j];
-        }
-        else
-        {
-            for(unsigned int i = 0; i < 6; ++i)
-                for(unsigned int j = i; j < 6; ++j)
-                    A(i, j) = D[i + 6*j];
-            for(unsigned int i = 0; i < 6; ++i)
-                for(unsigned int j = 0; j < i; ++j)
-                    A(i, j) = A(j, i);
-        }
-    }
+    // initialize the material
+    BaseType::InitializeMaterial( mModelNumber, mIsUndr, mProps );
 }
 
 /*****************************************************************************/
 /*********** UDSMe Implicit-Explicit ******************************************/
 /*****************************************************************************/
 
-
 void UDSMeImplex::CalculateMaterialResponse ( const Vector& StrainVector,
-                                       const Matrix& DeformationGradient,
-                                       Vector& StressVector,
-                                       Matrix& AlgorithmicTangent,
-                                       const ProcessInfo& CurrentProcessInfo,
-                                       const Properties& props,
-                                       const GeometryType& geom,
-                                       const Vector& ShapeFunctionsValues,
-                                       bool CalculateStresses,
-                                       int CalculateTangent,
-                                       bool SaveInternalVariables )
+                                              const Matrix& DeformationGradient,
+                                              Vector& StressVector,
+                                              Matrix& AlgorithmicTangent,
+                                              const ProcessInfo& CurrentProcessInfo,
+                                              const Properties& props,
+                                              const GeometryType& geom,
+                                              const Vector& ShapeFunctionsValues,
+                                              bool CalculateStresses,
+                                              int CalculateTangent,
+                                              bool SaveInternalVariables )
 {
     int IDTask;
     Vector D(36);
@@ -643,28 +423,21 @@ void UDSMeImplex::CalculateMaterialResponse ( const Vector& StrainVector,
 //    }
 }
 
-
-
-
 /*****************************************************************************/
 /*********** UDSMe Implicit ***************************************************/
 /*****************************************************************************/
 
-
-
-
-
 void UDSMeImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
-                                       const Matrix& DeformationGradient,
-                                       Vector& StressVector,
-                                       Matrix& AlgorithmicTangent,
-                                       const ProcessInfo& CurrentProcessInfo,
-                                       const Properties& props,
-                                       const GeometryType& geom,
-                                       const Vector& ShapeFunctionsValues,
-                                       bool CalculateStresses,
-                                       int CalculateTangent,
-                                       bool SaveInternalVariables )
+                                                const Matrix& DeformationGradient,
+                                                Vector& StressVector,
+                                                Matrix& AlgorithmicTangent,
+                                                const ProcessInfo& CurrentProcessInfo,
+                                                const Properties& props,
+                                                const GeometryType& geom,
+                                                const Vector& ShapeFunctionsValues,
+                                                 bool CalculateStresses,
+                                                int CalculateTangent,
+                                                bool SaveInternalVariables )
 {
     if (CurrentProcessInfo[SET_CALCULATE_REACTION])
     {

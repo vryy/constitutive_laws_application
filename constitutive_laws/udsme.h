@@ -14,12 +14,7 @@
 // External includes
 
 // Project includes
-#include "includes/define.h"
-#include "includes/variables.h"
-#include "includes/constitutive_law.h"
-#include "includes/serializer.h"
-#include "includes/ublas_interface.h"
-#include "constitutive_laws_application_variables.h"
+#include "constitutive_laws/udsm.h"
 
 /**
     Interface class to incorporate the user-defined soil models from Plaxis to Kratos
@@ -28,14 +23,14 @@
 namespace Kratos
 {
 
-class UDSMe : public ConstitutiveLaw
+class UDSMe : public UDSM
 {
     public:
         // Counted pointer for UDSMe
         KRATOS_CLASS_POINTER_DEFINITION( UDSMe );
 
         // Type Definitions
-        typedef ConstitutiveLaw BaseType;
+        typedef UDSM BaseType;
 
         // Default constructor
         UDSMe();
@@ -44,30 +39,10 @@ class UDSMe : public ConstitutiveLaw
         virtual ~UDSMe();
 
         // clone
-        BaseType::Pointer Clone() const override
+        ConstitutiveLaw::Pointer Clone() const override
         {
             BaseType::Pointer p_clone ( new UDSMe() );
             return p_clone;
-        }
-
-        ConstitutiveLaw::StrainMeasure GetStrainMeasure() final
-        {
-            return StrainMeasure_Infinitesimal;
-        }
-
-        ConstitutiveLaw::StressMeasure GetStressMeasure() final
-        {
-            return StressMeasure_Cauchy;
-        }
-
-        void GetLawFeatures(Features& rFeatures) final
-        {
-            rFeatures.SetStrainMeasure(this->GetStrainMeasure());
-        }
-
-        bool IsIncremental() final
-        {
-            return true;
         }
 
         bool Has ( const Variable<int>& rThisVariable ) final;
@@ -100,70 +75,12 @@ class UDSMe : public ConstitutiveLaw
 
         void SetValue( const Variable<std::string>& rVariable, const std::string& rValue, const ProcessInfo& rCurrentProcessInfo) final;
 
-        void ResetMaterial ( const Properties& props,
-                             const GeometryType& geom,
-                             const Vector& ShapeFunctionsValues ) final;
-
-        int Check ( const Properties& props,
-                    const GeometryType& geom,
-                    const ProcessInfo& CurrentProcessInfo ) const final;
-
         void InitializeMaterial ( const Properties& props,
                                   const GeometryType& geom,
                                   const Vector& ShapeFunctionsValues ) final;
 
-        void InitializeSolutionStep ( const Properties& props,
-                                      const GeometryType& geom,
-                                      const Vector& ShapeFunctionsValues ,
-                                      const ProcessInfo& CurrentProcessInfo ) final;
-
-        void InitializeNonLinearIteration ( const Properties& props,
-                                            const GeometryType& geom,
-                                            const Vector& ShapeFunctionsValues,
-                                            const ProcessInfo& CurrentProcessInfo ) final;
-
-        /**
-         * Computes the material response in terms of Cauchy stresses and constitutive tensor
-         * @see Parameters
-         */
-        void CalculateMaterialResponseCauchy( Parameters& parameters ) final;
-
-        /// DEPRECATED interface
-        void CalculateMaterialResponse ( const Vector& StrainVector,
-                                         const Matrix& DeformationGradient,
-                                         Vector& StressVector,
-                                         Matrix& AlgorithmicTangent,
-                                         const ProcessInfo& CurrentProcessInfo,
-                                         const Properties& props,
-                                         const GeometryType& geom,
-                                         const Vector& ShapeFunctionsValues,
-                                         bool CalculateStresses = true,
-                                         int CalculateTangent = true,
-                                         bool SaveInternalVariables = true ) override;
-
-        void FinalizeNonLinearIteration ( const Properties& props,
-                                          const GeometryType& geom,
-                                          const Vector& ShapeFunctionsValues,
-                                          const ProcessInfo& CurrentProcessInfo ) final;
-
-        void FinalizeSolutionStep ( const Properties& props,
-                                    const GeometryType& geom,
-                                    const Vector& ShapeFunctionsValues ,
-                                    const ProcessInfo& CurrentProcessInfo ) final;
-
     protected:
 
-        Vector mCurrentStrain;              // to store the current strain
-        Vector mLastStrain;                 // to store the converged strain in the last step
-        Vector mCurrentStress;              // link with Sig variable   // this is constitutive stress
-        Vector mLastStress;                 // link with Sig0 variable  // this is constitutive stress
-        Vector mPrestress;
-        double mPrestressFactor;
-        double mCurrentExcessPorePressure;  // link with Swp variable
-        double mLastExcessPorePressure;     // link with Swp0 variable
-        Vector mCurrentStateVariables;      // link with StVar variable
-        Vector mLastStateVariables;         // link with StVar0 variable
-        int mPlasticState;                  // link with iPl variable
         int mModelNumber;                   // to choose the soil model number, link with iMod variable
 
         std::string mLibName;
@@ -172,31 +89,19 @@ class UDSMe : public ConstitutiveLaw
         int mIsUndr;
         double mBulkW;
 
-        #ifndef KRATOS_UDSM_LIBRARY_IS_PROVIDED
-        static unsigned long long minstances; // values to store the instances of this constitutive law
-        static void* mp_udsm_handle; // handle to udsm library
-        static udsm_t UserMod;
-        #else
-        udsm_t UserMod;
-        #endif
-
         //serialization
         friend class Serializer;
 
         void save ( Serializer& rSerializer ) const override
         {
             rSerializer.save ( "name", "UDSMe" );
-            KRATOS_SERIALIZE_SAVE_BASE_CLASS ( rSerializer, ConstitutiveLaw )
+            KRATOS_SERIALIZE_SAVE_BASE_CLASS ( rSerializer, BaseType )
         }
 
         void load ( Serializer& rSerializer ) override
         {
-            KRATOS_SERIALIZE_LOAD_BASE_CLASS ( rSerializer, ConstitutiveLaw )
+            KRATOS_SERIALIZE_LOAD_BASE_CLASS ( rSerializer, BaseType )
         }
-
-        void VectorTo3DVector(const Vector& vector, Vector& vector_3d) const;
-        void Vector3DToVector(const Vector& vector_3d, Vector& vector) const;
-        void Vector1DToMatrix(const Vector& D, Matrix& A, const int& non_sym) const;
 }; // Class UDSMe
 
 class UDSMeImplex : public UDSMe
