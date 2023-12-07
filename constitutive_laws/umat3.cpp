@@ -11,6 +11,7 @@
 #include "geometries/geometry.h"
 #include "includes/ublas_interface.h"
 #include "structural_application/structural_application_variables.h"
+#include "structural_application/custom_utilities/sd_math_utils.h"
 
 namespace Kratos
 {
@@ -114,6 +115,8 @@ bool Umat3::Has( const Variable<Vector>& rThisVariable )
 
 bool Umat3::Has( const Variable<Matrix>& rThisVariable )
 {
+    if(rThisVariable == CAUCHY_STRESS_TENSOR)
+        return true;
     return false;
 }
 
@@ -127,6 +130,57 @@ double& Umat3::GetValue( const Variable<double>& rThisVariable, double& rValue )
     if(rThisVariable == PRESTRESS_FACTOR)
     {
         rValue = mPrestressFactor;
+    }
+    else if (rThisVariable == PRESSURE_P)
+    {
+        if( mOldStress.size() == 6 ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
+        {
+            rValue = -1.0/3 * (mOldStress[0] + mOldStress[1] + mOldStress[2]);
+        }
+        else if( mOldStress.size() == 3 ) // 2D case    [o_xx  o_yy  o_xy]
+        {
+            rValue = -1.0/3 * (mOldStress[0] + mOldStress[1]);
+        }
+        else if( mOldStress.size() == 4 ) // 2D case, plane strain    [o_xx  o_yy  o_zz  o_xy]
+        {
+            rValue = -1.0/3 * (mOldStress[0] + mOldStress[1] + mOldStressZZ);
+        }
+    }
+    else if (rThisVariable == PRESSURE_Q || rThisVariable == VON_MISES_STRESS)
+    {
+        double p, sxx, syy, szz, sxy, sxz, syz;
+        if( mOldStress.size() == 6 ) // 3D case    [o_xx  o_yy  o_zz  o_xy  o_yz  o_xz]
+        {
+            p = 1.0/3 * (mOldStress[0] + mOldStress[1] + mOldStress[2]);
+            sxx = mOldStress[0] - p;
+            syy = mOldStress[1] - p;
+            szz = mOldStress[2] - p;
+            sxy = mOldStress[3];
+            syz = mOldStress[4];
+            sxz = mOldStress[5];
+        }
+        else if( mOldStress.size() == 3 ) // 2D case    [o_xx  o_yy  o_xy]
+        {
+            p = 1.0/3 * (mOldStress[0] + mOldStress[1]);
+            sxx = mOldStress[0] - p;
+            syy = mOldStress[1] - p;
+            szz = -p;
+            sxy = mOldStress[2];
+            syz = 0.0;
+            sxz = 0.0;
+        }
+        else if( mOldStress.size() == 4 ) // 2D case, plane strain    [o_xx  o_yy  o_zz  o_xy]
+        {
+            p = 1.0/3 * (mOldStress[0] + mOldStress[1] + mOldStressZZ);
+            sxx = mOldStress[0] - p;
+            syy = mOldStress[1] - p;
+            szz = mOldStressZZ - p;
+            sxy = mOldStress[2];
+            syz = 0.0;
+            sxz = 0.0;
+        }
+
+        rValue = sqrt( 3.0 * ( 0.5*(sxx*sxx + syy*syy + szz*szz) + sxy*sxy + syz*syz + sxz*sxz ) );
     }
     return rValue;
 }
@@ -207,6 +261,13 @@ Vector& Umat3::GetValue( const Variable<Vector>& rThisVariable, Vector& rValue )
 
 Matrix& Umat3::GetValue( const Variable<Matrix>& rThisVariable, Matrix& rValue )
 {
+    if (rThisVariable == CAUCHY_STRESS_TENSOR)
+    {
+        if (rValue.size1() != 3 || rValue.size2() != 3)
+            rValue.resize(3, 3, false);
+        SD_MathUtils<double>::StressVectorToTensor(mOldStress, rValue);
+        return rValue;
+    }
     return rValue;
 }
 
