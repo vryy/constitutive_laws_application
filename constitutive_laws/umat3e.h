@@ -115,7 +115,12 @@ public:
 
     StressMeasure GetStressMeasure() final
     {
-        return StressMeasure_PK1;
+        return StressMeasure_Cauchy;
+    }
+
+    void GetLawFeatures(Features& rFeatures) final
+    {
+        rFeatures.SetStrainMeasure(this->GetStrainMeasure());
     }
 
     bool IsIncremental() final
