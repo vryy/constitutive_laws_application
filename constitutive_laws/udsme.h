@@ -33,10 +33,10 @@ class UDSMe : public UDSM
         typedef UDSM BaseType;
 
         // Default constructor
-        UDSMe();
+        UDSMe() : BaseType() {}
 
         // Destructor
-        virtual ~UDSMe();
+        virtual ~UDSMe() {}
 
         // clone
         ConstitutiveLaw::Pointer Clone() const override
@@ -78,6 +78,10 @@ class UDSMe : public UDSM
         void InitializeMaterial ( const Properties& props,
                                   const GeometryType& geom,
                                   const Vector& ShapeFunctionsValues ) final;
+
+        int Check ( const Properties& props,
+                    const GeometryType& geom,
+                    const ProcessInfo& CurrentProcessInfo ) const override;
 
     protected:
 

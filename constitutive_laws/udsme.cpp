@@ -1,18 +1,11 @@
 #include <iomanip>
 
 #include <dlfcn.h>
-#include "constitutive_laws/umat3.h"
 #include "constitutive_laws/udsme.h"
 #include "structural_application/structural_application_variables.h"
 
 namespace Kratos
 {
-
-UDSMe::UDSMe() : BaseType()
-{}
-
-UDSMe::~UDSMe()
-{}
 
 bool UDSMe::Has ( const Variable<int>& rThisVariable )
 {
@@ -30,8 +23,6 @@ bool UDSMe::Has ( const Variable<bool>& rThisVariable )
 
 bool UDSMe::Has ( const Variable<double>& rThisVariable )
 {
-//    if(rThisVariable == PLASTICITY_INDICATOR)
-//        return true;
     if(rThisVariable == BULK_W)
         return true;
     return BaseType::Has( rThisVariable );
@@ -40,10 +31,6 @@ bool UDSMe::Has ( const Variable<double>& rThisVariable )
 bool UDSMe::Has ( const Variable<Vector>& rThisVariable )
 {
     if(rThisVariable == MATERIAL_PARAMETERS)
-        return true;
-    if(rThisVariable == INTERNAL_VARIABLES)
-        return true;
-    if(rThisVariable == STRESSES)
         return true;
     return BaseType::Has( rThisVariable );
 }
@@ -73,10 +60,6 @@ bool& UDSMe::GetValue ( const Variable<bool>& rThisVariable, bool& rValue )
 
 double& UDSMe::GetValue ( const Variable<double>& rThisVariable, double& rValue )
 {
-//    if(rThisVariable == PLASTICITY_INDICATOR)
-//        rValue = mPlasticState;
-    if(rThisVariable == PRESTRESS_FACTOR)
-        rValue = mPrestressFactor;
     if(rThisVariable == BULK_W)
         rValue = mBulkW;
     return BaseType::GetValue( rThisVariable, rValue );
@@ -84,32 +67,11 @@ double& UDSMe::GetValue ( const Variable<double>& rThisVariable, double& rValue 
 
 Vector& UDSMe::GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue )
 {
-    if(rThisVariable == INTERNAL_VARIABLES)
-    {
-        if(rValue.size() != mCurrentStateVariables.size())
-            rValue.resize(mCurrentStateVariables.size(), false);
-        noalias(rValue) = mCurrentStateVariables;
-    }
-
     if(rThisVariable == MATERIAL_PARAMETERS)
     {
         if(rValue.size() != mProps.size())
             rValue.resize(mProps.size(), false);
         noalias(rValue) = mProps;
-    }
-
-    if(rThisVariable == STRESSES)
-    {
-        if(rValue.size() != mCurrentStress.size())
-            rValue.resize(mCurrentStress.size(), false);
-        noalias(rValue) = mCurrentStress;
-    }
-
-    if(rThisVariable == PRESTRESS || rThisVariable == INSITU_STRESS)
-    {
-        if(rValue.size() != mPrestress.size())
-            rValue.resize(mPrestress.size(), false);
-        noalias(rValue) = mPrestress;
     }
 
     return BaseType::GetValue( rThisVariable, rValue );
@@ -241,6 +203,13 @@ void UDSMe::InitializeMaterial ( const Properties& props,
     BaseType::InitializeMaterial( mModelNumber, mIsUndr, mProps );
 }
 
+int UDSMe::Check ( const Properties& props,
+                   const GeometryType& geom,
+                   const ProcessInfo& CurrentProcessInfo ) const
+{
+    // DO NOTHING
+}
+
 /*****************************************************************************/
 /*********** UDSMe Implicit-Explicit ******************************************/
 /*****************************************************************************/
@@ -257,170 +226,24 @@ void UDSMeImplex::CalculateMaterialResponse ( const Vector& StrainVector,
                                               int CalculateTangent,
                                               bool SaveInternalVariables )
 {
-    int IDTask;
-    Vector D(36);
-    int iPl;
-    int NonSym;
-    int iStrsDep, iTang, iTimeDep, iAbort = 0;
-    int iPrjDir, iPrjLen; // can use this for debugging purpose (TODO)
-    int nStat = mCurrentStateVariables.size();
+    const double omega = 1.0;
 
-    // compute the vector of previous effective stress component
-    Vector Sig0(20);
-    noalias(Sig0) = ZeroVector(20);
-    Sig0[0] = mLastStress[0];
-    Sig0[1] = mLastStress[1];
-    Sig0[2] = mLastStress[2];
-    Sig0[3] = mLastStress[3];
-    Sig0[4] = mLastStress[4];
-    Sig0[5] = mLastStress[5];
+    UDSM::DebugInfo proc_info;
+    proc_info.time = CurrentProcessInfo[TIME];
+    proc_info.delta_time = CurrentProcessInfo[DELTA_TIME];
+    proc_info.step = mStep;
+    proc_info.iteration = mIter;
+    proc_info.element_id = mElemId;
+    proc_info.point_id = mGaussId;
 
-    // compute the previous excess pore pressure
-    double Swp0 = mLastExcessPorePressure;
+    UDSM::Input input( mLastStrain, mLastStress, mLastStateVariables,
+            mLastExcessPorePressure);
 
-    // compute the previous value of state variables
-    Vector StVar0 = mLastStateVariables;
+    UDSM::Output output( mCurrentStrain, mCurrentStress, mCurrentStateVariables,
+            mCurrentExcessPorePressure, mPlasticState, AlgorithmicTangent );
 
-    // compute the vector of incremental strain
-    Vector dEps(12);
-    dEps[0] = StrainVector[0] - mLastStrain[0];
-    dEps[1] = StrainVector[1] - mLastStrain[1];
-    dEps[2] = StrainVector[2] - mLastStrain[2];
-    dEps[3] = StrainVector[3] - mLastStrain[3];
-    dEps[4] = StrainVector[4] - mLastStrain[4];
-    dEps[5] = StrainVector[5] - mLastStrain[5];
-    dEps[6] = mLastStrain[0];
-    dEps[7] = mLastStrain[1];
-    dEps[8] = mLastStrain[2];
-    dEps[9] = mLastStrain[3];
-    dEps[10] = mLastStrain[4];
-    dEps[11] = mLastStrain[5];
-
-    // initialize D with elastic matrix
-    IDTask = 6;
-    UserMod( &IDTask,
-             &mModelNumber,
-             &mIsUndr,
-             NULL, // iStep
-             NULL, // iter
-             NULL, // Iel
-             NULL, // Int
-             NULL, NULL, NULL, // X, Y, Z
-             NULL, // Time0
-             NULL, // dTime
-             &mProps[0],
-             &Sig0[0],
-             &Swp0,
-             &StVar0[0],
-             &dEps[0],
-             &D[0],
-             &mBulkW,
-             &mCurrentStress[0],
-             &mCurrentExcessPorePressure,
-             &mCurrentStateVariables[0],
-             &iPl,
-             &nStat,
-             &NonSym,
-             &iStrsDep,
-             &iTimeDep,
-             &iTang,
-             &iPrjDir,
-             &iPrjLen,
-             &iAbort );
-
-    // export the stiffness matrix
-    IDTask = 5;
-    UserMod(&IDTask, &mModelNumber, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-            NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-            &NonSym,
-            &iStrsDep,
-            &iTimeDep,
-            &iTang,
-            &iPrjDir,
-            &iPrjLen,
-            &iAbort );
-
-    if(NonSym != 0)
-    {
-        for(std::size_t i = 0; i < 6; ++i)
-            for(std::size_t j = 0; j < 6; ++j)
-                AlgorithmicTangent(i, j) = D[i + 6*j];
-    }
-    else
-    {
-        for(std::size_t i = 0; i < 6; ++i)
-            for(std::size_t j = i; j < 6; ++j)
-                AlgorithmicTangent(i, j) = D[i + 6*j];
-        for(std::size_t i = 0; i < 6; ++i)
-            for(std::size_t j = 0; j < i; ++j)
-                AlgorithmicTangent(i, j) = AlgorithmicTangent(j, i);
-    }
-
-    // compute delta_strain
-    Vector delta_strain = StrainVector - mCurrentStrain;
-//    KRATOS_WATCH(delta_strain)
-
-    // compute equilibrium stress
-    // double omega = Props[UDSM_RELAXATION_FACTOR]; // relaxation factor
-    // noalias(StressVector) = mCurrentStress + omega*prod(AlgorithmicTangent, delta_strain);
-    noalias(StressVector) = mCurrentStress + prod(AlgorithmicTangent, delta_strain);
-
-    // calculate the constitutive stress
-    IDTask = 2;
-    UserMod( &IDTask,
-             &mModelNumber,
-             &mIsUndr,
-             NULL, // iStep
-             NULL, // iter
-             NULL, // Iel
-             NULL, // Int
-             NULL, NULL, NULL, // X, Y, Z
-             NULL, // Time0
-             NULL, // dTime
-             &mProps[0],
-             &Sig0[0],
-             &Swp0,
-             &StVar0[0],
-             &dEps[0],
-             &D[0],
-             &mBulkW,
-             &mCurrentStress[0],
-             &mCurrentExcessPorePressure,
-             &mCurrentStateVariables[0],
-             &iPl,
-             &nStat,
-             &NonSym,
-             &iStrsDep,
-             &iTimeDep,
-             &iTang,
-             &iPrjDir,
-             &iPrjLen,
-             &iAbort );
-
-//    KRATOS_WATCH(mCurrentStress)
-//    KRATOS_WATCH(iPl)
-
-    if(iAbort != 0)
-        KRATOS_THROW_ERROR(std::logic_error, "Force calculation stop after calculating stress, iAbort =", iAbort)
-
-    // export the plastic state
-    mPlasticState = iPl;
-
-    // compute for the undrained state
-    if(mIsUndr != 0)
-    {
-        // TODO add the bulk stiffness of water to the material stiffness matrix
-    }
-
-    // save the current strain
-    noalias(mCurrentStrain) = StrainVector;
-
-//    if(mPlasticState)
-//    {
-//        KRATOS_WATCH(StressVector)
-//        KRATOS_WATCH(AlgorithmicTangent)
-//        KRATOS_WATCH(mCurrentStateVariables)
-//    }
+    UDSMImplex::StressIntegration( StrainVector, StressVector, input, output,
+            UserMod, omega, proc_info, mModelNumber, mIsUndr, mBulkW, mProps );
 }
 
 /*****************************************************************************/
@@ -435,7 +258,7 @@ void UDSMeImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
                                                 const Properties& props,
                                                 const GeometryType& geom,
                                                 const Vector& ShapeFunctionsValues,
-                                                 bool CalculateStresses,
+                                                bool CalculateStresses,
                                                 int CalculateTangent,
                                                 bool SaveInternalVariables )
 {
@@ -448,233 +271,32 @@ void UDSMeImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
         }
     }
 
+    UDSM::DebugInfo proc_info;
+    proc_info.time = CurrentProcessInfo[TIME];
+    proc_info.delta_time = CurrentProcessInfo[DELTA_TIME];
+    proc_info.step = mStep;
+    proc_info.iteration = mIter;
+    proc_info.element_id = mElemId;
+    proc_info.point_id = mGaussId;
+
     // save the current strain
     // KRATOS_WATCH(StrainVector)
-    this->VectorTo3DVector(StrainVector, mCurrentStrain);
+    UDSM::VectorTo3DVector(StrainVector, mCurrentStrain);
 
-    int IDTask;
-    Vector D(36);
-    double time = CurrentProcessInfo[TIME];
-    double delta_time = CurrentProcessInfo[DELTA_TIME];
-    int iPl;
-    int NonSym;
-    int iStrsDep, iTang, iTimeDep, iAbort = 0;
-    int iPrjDir, iPrjLen;
-    int nStat = mCurrentStateVariables.size();
-    double dummyX, dummyY, dummyZ;
-    int dummy_iStep=0, dummy_iTer=0, dummy_Iel=0, dummy_Int=0;
+    UDSM::Input input( mLastStrain, mLastStress, mLastStateVariables,
+            mLastExcessPorePressure);
 
-    // compute the vector of previous effective stress component
-    Vector Sig0(20);
-    noalias(Sig0) = ZeroVector(20);
-    Sig0[0] = mLastStress[0];
-    Sig0[1] = mLastStress[1];
-    Sig0[2] = mLastStress[2];
-    Sig0[3] = mLastStress[3];
-    Sig0[4] = mLastStress[4];
-    Sig0[5] = mLastStress[5];
+    UDSM::Output output( mCurrentStrain, mCurrentStress, mCurrentStateVariables,
+            mCurrentExcessPorePressure, mPlasticState, AlgorithmicTangent );
 
-    // compute the previous excess pore pressure
-    double Swp0 = mLastExcessPorePressure;
-
-    // compute the previous value of state variables
-    Vector StVar0 = mLastStateVariables;
-
-    // KRATOS_WATCH(mCurrentStrain)
-
-    // compute the vector of incremental strain
-    Vector dEps(12);
-    dEps[0] = mCurrentStrain[0] - mLastStrain[0];
-    dEps[1] = mCurrentStrain[1] - mLastStrain[1];
-    dEps[2] = mCurrentStrain[2] - mLastStrain[2];
-    dEps[3] = mCurrentStrain[3] - mLastStrain[3];
-    dEps[4] = mCurrentStrain[4] - mLastStrain[4];
-    dEps[5] = mCurrentStrain[5] - mLastStrain[5];
-    dEps[6] = mLastStrain[0];
-    dEps[7] = mLastStrain[1];
-    dEps[8] = mLastStrain[2];
-    dEps[9] = mLastStrain[3];
-    dEps[10] = mLastStrain[4];
-    dEps[11] = mLastStrain[5];
-
-    // initialize D with elastic matrix
-    IDTask = 6;
-    UserMod( &IDTask,
-             &mModelNumber,
-             &mIsUndr,
-             &dummy_iStep, // iStep
-             &dummy_iTer, // iter
-             &dummy_Iel, // Iel
-             &dummy_Int, // Int
-             &dummyX, &dummyY, &dummyZ, // X, Y, Z
-             &time, // Time0
-             &delta_time, // dTime
-             &mProps[0],
-             &Sig0[0],
-             &Swp0,
-             &StVar0[0],
-             &dEps[0],
-             &D[0],
-             &mBulkW,
-             &mCurrentStress[0],
-             &mCurrentExcessPorePressure,
-             &mCurrentStateVariables[0],
-             &iPl,
-             &nStat,
-             &NonSym,
-             &iStrsDep,
-             &iTimeDep,
-             &iTang,
-             &iPrjDir,
-             &iPrjLen,
-             &iAbort );
-
-    // calculate the consitutive stress
-    IDTask = 2;
-    UserMod( &IDTask,
-             &mModelNumber,
-             &mIsUndr,
-             &dummy_iStep, // iStep
-             &dummy_iTer, // iter
-             &dummy_Iel, // Iel
-             &dummy_Int, // Int
-             &dummyX, &dummyY, &dummyZ, // X, Y, Z
-             &time, // Time0
-             &delta_time, // dTime
-             &mProps[0],
-             &Sig0[0],
-             &Swp0,
-             &StVar0[0],
-             &dEps[0],
-             &D[0],
-             &mBulkW,
-             &mCurrentStress[0],
-             &mCurrentExcessPorePressure,
-             &mCurrentStateVariables[0],
-             &iPl,
-             &nStat,
-             &NonSym,
-             &iStrsDep,
-             &iTimeDep,
-             &iTang,
-             &iPrjDir,
-             &iPrjLen,
-             &iAbort );
-
-//    KRATOS_WATCH(mCurrentStress)
-//    KRATOS_WATCH(iPl)
-
-    if(iAbort != 0)
-        KRATOS_THROW_ERROR(std::logic_error, "Force calculation stop after calculating stress, iAbort =", iAbort)
-
-    // export the plastic state
-    mPlasticState = iPl;
-
-    // calculate the material stiffness
-    IDTask = 3;
-    UserMod( &IDTask,
-             &mModelNumber,
-             &mIsUndr,
-             &dummy_iStep, // iStep
-             &dummy_iTer, // iter
-             &dummy_Iel, // Iel
-             &dummy_Int, // Int
-             &dummyX, &dummyY, &dummyZ, // X, Y, Z
-             &time, // Time0
-             &delta_time, // dTime
-             &mProps[0],
-             &Sig0[0],
-             &Swp0,
-             &StVar0[0],
-             &dEps[0],
-             &D[0],
-             &mBulkW,
-             &mCurrentStress[0],
-             &mCurrentExcessPorePressure,
-             &mCurrentStateVariables[0],
-             &iPl,
-             &nStat,
-             &NonSym,
-             &iStrsDep,
-             &iTimeDep,
-             &iTang,
-             &iPrjDir,
-             &iPrjLen,
-             &iAbort );
-//    KRATOS_WATCH(D)
-//    iAbort=1;
-
-    if(iAbort != 0)
-        KRATOS_THROW_ERROR(std::logic_error, "Force calculation stop after calculating material stiffness, iAbort =", iAbort)
-
-    // compute for the undrained state
-    if(mIsUndr != 0)
-    {
-        // TODO add the bulk stiffness of water to the material stiffness matrix
-    }
+    UDSMImplicit::StressIntegration( input, output, UserMod, proc_info,
+            mModelNumber, mIsUndr, mBulkW, mProps );
 
     if (CalculateStresses)
     {
         // export the stress
-        this->Vector3DToVector(mCurrentStress, StressVector);
+        UDSM::Vector3DToVector(mCurrentStress, StressVector);
     }
-
-    // obtain the stiffness matrix properties
-    IDTask = 5;
-    UserMod( &IDTask,
-             &mModelNumber,
-             &mIsUndr,
-             &dummy_iStep, // iStep
-             &dummy_iTer, // iter
-             &dummy_Iel, // Iel
-             &dummy_Int, // Int
-             &dummyX, &dummyY, &dummyZ, // X, Y, Z
-             &time, // Time0
-             &delta_time, // dTime
-             &mProps[0],
-             &Sig0[0],
-             &Swp0,
-             &StVar0[0],
-             &dEps[0],
-             &D[0],
-             &mBulkW,
-             &mCurrentStress[0],
-             &mCurrentExcessPorePressure,
-             &mCurrentStateVariables[0],
-             &iPl,
-             &nStat,
-             &NonSym,
-             &iStrsDep,
-             &iTimeDep,
-             &iTang,
-             &iPrjDir,
-             &iPrjLen,
-             &iAbort );
-
-    if (CalculateTangent)
-    {
-        this->Vector1DToMatrix(D, AlgorithmicTangent, NonSym);
-    }
-
-//    if(mPlasticState)
-//    {
-       // KRATOS_WATCH(StressVector)
-       // KRATOS_WATCH(AlgorithmicTangent)
-//        KRATOS_WATCH(mCurrentStateVariables)
-//    }
 }
 
-
 } // Namespace Kratos
-
-#ifdef USRMOD1
-#undef USRMOD1
-#endif
-
-#ifdef USRMOD2
-#undef USRMOD2
-#endif
-
-#ifdef DEFINE_USRMOD_PLAXIS
-#undef DEFINE_USRMOD_PLAXIS
-#endif

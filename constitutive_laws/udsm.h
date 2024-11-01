@@ -33,6 +33,38 @@ class UDSM : public ConstitutiveLaw
         // Counted pointer for UDSM
         KRATOS_CLASS_POINTER_DEFINITION( UDSM );
 
+        // Debug Info for UDSM
+        struct DebugInfo
+        {
+            double time, delta_time;
+            int step, iteration, element_id, point_id;
+        };
+
+        struct Input
+        {
+            Input (Vector& v1, Vector& v2, Vector& v3, double& d1)
+            : LastStrain(v1), LastStress(v2), LastStateVariables(v3),
+              LastExcessPorePressure(d1)
+            {}
+
+            Vector &LastStrain, &LastStress, &LastStateVariables;
+            double &LastExcessPorePressure;
+        };
+
+        struct Output
+        {
+            Output (Vector& v1, Vector& v2, Vector& v3, double& d1, int& i1, Matrix& m1)
+            : CurrentStrain(v1), CurrentStress(v2), CurrentStateVariables(v3),
+              CurrentExcessPorePressure(d1), PlasticState(i1),
+              AlgorithmicTangent(m1)
+            {}
+
+            Vector &CurrentStrain, &CurrentStress, &CurrentStateVariables;
+            double &CurrentExcessPorePressure;
+            int &PlasticState;
+            Matrix &AlgorithmicTangent;
+        };
+
         // Type Definitions
         typedef ConstitutiveLaw BaseType;
 
@@ -155,14 +187,15 @@ class UDSM : public ConstitutiveLaw
         int mModelNumber;                   // to choose the soil model number, link with iMod variable
 
         #ifndef KRATOS_UDSM_LIBRARY_IS_PROVIDED
-        static unsigned long long minstances; // values to store the instances of this constitutive law
+        static unsigned long long minstances; // values to store the number of instances in the memory of this constitutive law
+        static unsigned long long mmaxinstances; // values to store the maximum number of instances in the memory of this constitutive law
         static void* mp_udsm_handle; // handle to udsm library
-        static udsm_t UserMod;
+        static udsm_t UserMod; // pointer to UDSM function
         #else
-        udsm_t UserMod;
+        udsm_t UserMod; // pointer to UDSM function
         #endif
 
-        void InitializeMaterial( int ModelNumber, int IsUndrained, const Vector& Props );
+        void InitializeMaterial( int ModelNumber, int IsUndrained, const Vector& Props, bool need_determine_internal_params = false );
 
         //serialization
         friend class Serializer;
@@ -216,6 +249,11 @@ class UDSMImplex : public UDSM
                                          bool CalculateStresses = true,
                                          int CalculateTangent = true,
                                          bool SaveInternalVariables = true ) final;
+
+        static void StressIntegration ( const Vector& StrainVector, Vector& StressVector,
+                                        const UDSM::Input& rInput, UDSM::Output& rOutput,
+                                        const udsm_t UserFun, double omega, const UDSM::DebugInfo& pinfo,
+                                        int ModelNumber, int IsUndr, double BulkW, const Vector& Props );
 };
 
 class UDSMImplicit : public UDSM
@@ -251,6 +289,17 @@ class UDSMImplicit : public UDSM
                                          bool CalculateStresses = true,
                                          int CalculateTangent = true,
                                          bool SaveInternalVariables = true ) final;
+
+        static void StressIntegration ( const UDSM::Input& rInput, UDSM::Output& rOutput,
+                                        const udsm_t UserFun, const UDSM::DebugInfo& pinfo,
+                                        int ModelNumber, int IsUndr, double BulkW, const Vector& Props,
+                                        int CalculateTangent = 1 );
+
+        static int ComputeNumericalTangent( const UDSM::Input& rInput, const UDSM::Output& rRefOutput,
+                                             Matrix& Tangent,
+                                             const udsm_t UserFun, const UDSM::DebugInfo& pinfo,
+                                             int ModelNumber, int IsUndr, double BulkW, const Vector& Props,
+                                             double epsilon );
 };
 
 }  // namespace Kratos.
