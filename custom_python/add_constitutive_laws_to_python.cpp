@@ -20,6 +20,7 @@
 #include "includes/node.h"
 #include "includes/variables.h"
 #include "includes/mesh.h"
+#include "includes/element.h"
 #include "includes/condition.h"
 #include "python/pointer_vector_set_python_interface.h"
 #include "python/variable_indexing_python.h"
