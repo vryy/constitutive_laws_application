@@ -10,11 +10,9 @@
 
 #if defined(KRATOS_PYTHON)
 // External includes
-#include <boost/python.hpp>
-
 
 // Project includes
-#include "includes/define.h"
+#include "includes/define_python.h"
 #include "constitutive_laws_application.h"
 #include "constitutive_laws_application_variables.h"
 #include "custom_python/add_constitutive_laws_to_python.h"
@@ -25,10 +23,10 @@ namespace Kratos
 namespace Python
 {
 
-using namespace boost::python;
-
 BOOST_PYTHON_MODULE( KratosConstitutiveLawsApplication )
 {
+
+    using namespace boost::python;
 
     class_ < KratosConstitutiveLawsApplication,
            KratosConstitutiveLawsApplication::Pointer,
@@ -55,7 +53,6 @@ BOOST_PYTHON_MODULE( KratosConstitutiveLawsApplication )
     KRATOS_REGISTER_IN_PYTHON_VARIABLE( NEED_DETERMINE_INTERNAL_PARAMS )
 
 }
-
 
 }  // namespace Python.
 
