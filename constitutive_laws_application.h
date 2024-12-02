@@ -54,7 +54,7 @@ namespace Kratos
 /** Detail class definition.
 */
 
-class KratosConstitutiveLawsApplication : public KratosApplication
+class KRATOS_API(CONSTITUTIVE_LAWS_APPLICATION) KratosConstitutiveLawsApplication : public KratosApplication
 {
 
 public:
@@ -73,7 +73,7 @@ public:
     KratosConstitutiveLawsApplication();
 
     /// Destructor.
-    virtual ~KratosConstitutiveLawsApplication() {}
+    ~KratosConstitutiveLawsApplication() override {}
 
 
     ///@}
@@ -85,9 +85,7 @@ public:
     ///@name Operations
     ///@{
 
-    virtual void Register();
-
-
+    void Register() override;
 
     ///@}
     ///@name Access
@@ -104,20 +102,20 @@ public:
     ///@{
 
     /// Turn back information as a string.
-    virtual std::string Info() const
+    std::string Info() const override
     {
         return "KratosConstitutiveLawsApplication";
     }
 
     /// Print information about this object.
-    virtual void PrintInfo ( std::ostream& rOStream ) const
+    void PrintInfo ( std::ostream& rOStream ) const override
     {
         rOStream << Info();
         PrintData ( rOStream );
     }
 
     ///// Print object's data.
-    virtual void PrintData ( std::ostream& rOStream ) const
+    void PrintData ( std::ostream& rOStream ) const override
     {
         KRATOS_WATCH ( "in KratosConstitutiveLawsApplication" );
         KRATOS_WATCH ( KratosComponents<VariableData>::GetComponents().size() );

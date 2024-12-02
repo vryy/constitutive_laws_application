@@ -27,7 +27,9 @@
 
 //constitutive laws
 #include "includes/constitutive_law.h"
+#ifdef KRATOS_ENABLE_FORTRAN_CODE
 #include "constitutive_laws/umat.h"
+#endif
 #include "constitutive_laws/udsm.h"
 #include "constitutive_laws/udsme.h"
 #include "constitutive_laws/umat2.h"
@@ -52,9 +54,11 @@ typedef Mesh<Node<3>, Properties, Element, Condition> MeshType;
 
 void  AddConstitutiveLawsToPython()
 {
+#ifdef KRATOS_ENABLE_FORTRAN_CODE
     class_< Umat, bases< ConstitutiveLawBaseType >, boost::noncopyable >
     ( "Umat", init<>() )
     ;
+#endif
 
     class_< UDSMImplex, bases< ConstitutiveLawBaseType >, boost::noncopyable >
     ( "UDSMImplex", init<>() )
@@ -80,11 +84,13 @@ void  AddConstitutiveLawsToPython()
     ( "Umat3e", init<>() )
     ;
 
-    #ifdef KRATOS_USE_OPENSEES
+#ifdef KRATOS_USE_OPENSEES
     class_< OpenSeesMat, bases< ConstitutiveLawBaseType >, boost::noncopyable >
     ( "OpenSeesMat", init<>() )
     ;
-    #endif
+#endif
 }
+
 }  // namespace Python.
+
 } // Namespace Kratos

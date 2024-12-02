@@ -1,5 +1,10 @@
 #include <iostream>
+
+#ifdef _MSC_VER
+#include <Windows.h>
+#else
 #include <dlfcn.h>
+#endif
 
 #include "includes/define.h"
 #include "constitutive_laws/umat2.h"
@@ -30,39 +35,45 @@ Umat2::Umat2()
 
 Umat2::~Umat2()
 {
-    if(mp_umat_handle != 0)
+    if (mp_umat_handle != 0)
+    {
+#ifdef _MSC_VER
+        // TODO
+#else
         dlclose(mp_umat_handle);
+#endif
+    }
 }
 
 int Umat2::Check( const Kratos::Properties& props, const GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo ) const
 {
     if(props.Has( ABAQUS_LIBRARY_NAME ) == false)
     {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties must define ABAQUS_LIBRARY_NAME", "")
+        KRATOS_ERROR << "Properties must define ABAQUS_LIBRARY_NAME";
     }
     if(props.Has( UMAT_NAME ) == false)
     {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties must define UMAT_NAME", "")
+        KRATOS_ERROR << "Properties must define UMAT_NAME";
     }
     if(props.Has( UMAT_NDI ) == false)
     {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties must define UMAT_NDI", "")
+        KRATOS_ERROR << "Properties must define UMAT_NDI";
     }
     if(props.Has( UMAT_NSHR ) == false)
     {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties must define UMAT_NSHR", "")
+        KRATOS_ERROR << "Properties must define UMAT_NSHR";
     }
     if(props.Has( UMAT_NSTATV ) == false)
     {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties must define UMAT_NSTATV", "")
+        KRATOS_ERROR << "Properties must define UMAT_NSTATV";
     }
     if(props.Has( UMAT_CMNAME ) == false)
     {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties must define UMAT_CMNAME", "")
+        KRATOS_ERROR << "Properties must define UMAT_CMNAME";
     }
     if(props.Has( MATERIAL_PARAMETERS ) == false)
     {
-        KRATOS_THROW_ERROR(std::logic_error, "Properties must define MATERIAL_PARAMETERS", "")
+        KRATOS_ERROR << "Properties must define MATERIAL_PARAMETERS";
     }
     return 0;
 }
@@ -196,14 +207,21 @@ void Umat2::InitializeMaterial( const Properties& props,
 
     // get the library name and load the udsm subroutine
     std::string lib_name = props[ABAQUS_LIBRARY_NAME];
+#ifdef _MSC_VER
+    // TODO
+#else
 //    mp_umat_handle = dlopen(lib_name.c_str(), RTLD_LAZY);
     mp_umat_handle = dlopen(lib_name.c_str(), RTLD_NOW | RTLD_GLOBAL);
+#endif
     if(mp_umat_handle == 0)
     {
-        KRATOS_THROW_ERROR(std::runtime_error, "The Abaqus material library does not exist:", lib_name)
+        KRATOS_ERROR << "The Abaqus material library " << lib_name << " does not exist";
     }
 
     std::string umat_name = props[UMAT_NAME];
+#ifdef _MSC_VER
+    // TODO
+#else
     char* error;
     Umat = (void (*)(double* STRESS, double* STATEV, double** DDSDDE, double* SSE, double* SPD, double* SCD,
                 double* RPL, double* DDSDDT, double* DRPLDE, double* DRPLDT, double* STRAN, double* DSTRAN,
@@ -215,10 +233,9 @@ void Umat2::InitializeMaterial( const Properties& props,
     error = dlerror();
     if(error != NULL)
     {
-        std::stringstream ss;
-        ss << "Error loading subroutine " << umat_name << " in the " << lib_name << " library, error message = " << error;
-        KRATOS_THROW_ERROR(std::runtime_error, ss.str(), "")
+        KRATOS_ERROR << "Error loading subroutine " << umat_name << " in the " << lib_name << " library, error message = " << error;
     }
+#endif
 }
 
 void Umat2::ResetMaterial( const Properties& props,
@@ -278,15 +295,15 @@ void Umat2::CalculateMaterialResponse( const Vector& StrainVector,
     int NSTATV = props[UMAT_NSTATV];
     char* cmname = (char*)(props[UMAT_CMNAME].c_str());
 
-    double STRAN[NTENS];
-    double STRES[NTENS];
-    double DSTRAN[NTENS];
-    double DDSDDE[NTENS][NTENS];
-    double DDSDDT[NTENS];
-    double DRPLDE[NTENS];
-    double DRPLDT[NTENS];
-    double DFGRD0[3][3];
-    double DFGRD1[3][3];
+    std::vector<double> STRAN(NTENS);
+    std::vector<double> STRES(NTENS);
+    std::vector<double> DSTRAN(NTENS);
+    std::vector<double> DDSDDE(NTENS*NTENS);
+    std::vector<double> DDSDDT(NTENS);
+    std::vector<double> DRPLDE(NTENS);
+    std::vector<double> DRPLDT(NTENS);
+    double DFGRD0[9];
+    double DFGRD1[9];
     double TIM[2];
     double DTIM;
     double SSE, SPD, SCD, RPL;
@@ -301,11 +318,11 @@ void Umat2::CalculateMaterialResponse( const Vector& StrainVector,
             DSTRAN[i] = StrainVector[K2A[i]] - mCurrentStrain[K2A[i]];
             STRES[i] = mCurrentStress[K2A[i]];
             for(int j = 0; j < 6; ++j)
-                DDSDDE[i][j] = 0.0;
+                DDSDDE[i*6 + j] = 0.0;
         }
     }
-    else if( ( (my_NDI == 2) & (my_NSHR == 1) )     // 2D case, plane strain    [o_xx  o_yy  o_xy]
-          || ( (my_NDI == 3) & (my_NSHR == 1) ) )   // 2D case, plane strain    [o_xx  o_yy  o_zz o_xy]
+    else if( ( (my_NDI == 2) && (my_NSHR == 1) )     // 2D case, plane strain    [o_xx  o_yy  o_xy]
+          || ( (my_NDI == 3) && (my_NSHR == 1) ) )   // 2D case, plane strain    [o_xx  o_yy  o_zz o_xy]
     {
         for(int i = 0; i < 6; ++i)
         {
@@ -313,7 +330,7 @@ void Umat2::CalculateMaterialResponse( const Vector& StrainVector,
             DSTRAN[i] = 0.0;
             STRES[i] = 0.0;
             for(int j = 0; j < 6; ++j)
-                DDSDDE[i][j] = 0.0;
+                DDSDDE[i*6 + j] = 0.0;
         }
         for(int i = 0; i < 3; ++i)
         {
@@ -328,8 +345,8 @@ void Umat2::CalculateMaterialResponse( const Vector& StrainVector,
     {
         for(int j = 0; j < 3; ++j)
         {
-            DFGRD0[i][j] = 0.0;
-            DFGRD1[i][j] = DeformationGradient(i, j);
+            DFGRD0[i + 3*j] = 0.0;
+            DFGRD1[i + 3*j] = DeformationGradient(i, j);
         }
     }
 
@@ -340,19 +357,19 @@ void Umat2::CalculateMaterialResponse( const Vector& StrainVector,
     TEMP = 0.0;
     DTEMP = 0.0; // TODO: take into account the temperature
 
-    Umat( STRES,
+    Umat( STRES.data(),
           &mCurrentStateVariables[0],
-          (double**)DDSDDE,
+          DDSDDE.data(),
           &SSE, &SPD, &SCD, &RPL,
-          DDSDDT, DRPLDE, DRPLDT,
-          STRAN, DSTRAN,
+          DDSDDT.data(), DRPLDE.data(), DRPLDT.data(),
+          STRAN.data(), DSTRAN.data(),
           TIM, &DTIM,
           &TEMP, &DTEMP,
           NULL, NULL,
           cmname,
           &NDI, &NSHR, &NTENS, &NSTATV, &PROPS[0], &NPROPS,
           NULL, NULL, NULL, NULL,
-          (double**)DFGRD0, (double**)DFGRD1,
+          DFGRD0, DFGRD1,
           &mElementId, &mIntPointIndex,
           NULL, NULL,
           &KSTEP, &KINC );
@@ -366,8 +383,8 @@ void Umat2::CalculateMaterialResponse( const Vector& StrainVector,
             mCurrentStress[i] = STRES[A2K[i]];
         }
     }
-    else if( ( (my_NDI == 2) & (my_NSHR == 1) )     // 2D case, plane strain    [o_xx  o_yy  o_xy]
-          || ( (my_NDI == 3) & (my_NSHR == 1) ) )   // 2D case, plane strain    [o_xx  o_yy  o_zz o_xy]
+    else if( ( (my_NDI == 2) && (my_NSHR == 1) )     // 2D case, plane strain    [o_xx  o_yy  o_xy]
+          || ( (my_NDI == 3) && (my_NSHR == 1) ) )   // 2D case, plane strain    [o_xx  o_yy  o_zz o_xy]
     {
         for(int i = 0; i < 3; ++i)
         {
@@ -384,18 +401,18 @@ void Umat2::CalculateMaterialResponse( const Vector& StrainVector,
         {
             for(int j = 0; j < 6; ++j)
             {
-                AlgorithmicTangent(i, j) = DDSDDE[A2K[i]][A2K[j]];
+                AlgorithmicTangent(i, j) = DDSDDE[A2K[i] + A2K[j]*6];
             }
         }
     }
-    else if( ( (my_NDI == 2) & (my_NSHR == 1) )     // 2D case, plane strain    [o_xx  o_yy  o_xy]
-          || ( (my_NDI == 3) & (my_NSHR == 1) ) )   // 2D case, plane strain    [o_xx  o_yy  o_zz o_xy]
+    else if( ( (my_NDI == 2) && (my_NSHR == 1) )     // 2D case, plane strain    [o_xx  o_yy  o_xy]
+          || ( (my_NDI == 3) && (my_NSHR == 1) ) )   // 2D case, plane strain    [o_xx  o_yy  o_zz o_xy]
     {
         for(int i = 0; i < 3; ++i)
         {
             for(int j = 0; j < 3; ++j)
             {
-                AlgorithmicTangent(i, j) = DDSDDE[PS[i]][PS[j]];
+                AlgorithmicTangent(i, j) = DDSDDE[PS[i] + PS[j]*6];
             }
         }
     }

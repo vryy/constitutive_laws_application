@@ -258,12 +258,12 @@ private:
      * @param KSTEP .......... step number
      * @param KINC ........... increment number
      */
-    void (*Umat)(double* STRESS, double* STATEV, double** DDSDDE, double* SSE, double* SPD, double* SCD,
+    void (*Umat)(double* STRESS, double* STATEV, double* DDSDDE, double* SSE, double* SPD, double* SCD,
                  double* RPL, double* DDSDDT, double* DRPLDE, double* DRPLDT, double* STRAN, double* DSTRAN,
                  double* TIME, double* DTIME, double* TEMP, double* DTEMP, double* PREDEF, double* DPRED,
                  char* CMNAME, int* NDI, int* NSHR, int* NTENS, int* NSTATV, double* PROPS, int* NPROPS,
-                 double* COORDS, double** DROT, double* PNEWDT, double* CELENT, double** DFGRD0,
-                 double** DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC);
+                 double* COORDS, double* DROT, double* PNEWDT, double* CELENT, double* DFGRD0,
+                 double* DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC);
 
     // serialization
     friend class Serializer;

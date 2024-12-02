@@ -1,6 +1,10 @@
 #include <iomanip>
 
+#ifdef _MSC_VER
+#include <Windows.h>
+#else
 #include <dlfcn.h>
+#endif
 #include "umat3.h"
 #include "udsm.h"
 #include "includes/c2c_variables.h"
@@ -35,7 +39,11 @@ UDSM::~UDSM()
     --minstances;
     if(minstances == 0)
     {
+#ifdef _MSC_VER
+        // TODO
+#else
         dlclose(mp_udsm_handle);
+#endif
         std::cout << "Successfully unload " << mmaxinstances << " instances of the UDSM shared library/DLL" << std::endl;
     }
     #endif
@@ -171,18 +179,26 @@ void UDSM::InitializeMaterial ( const Properties& props,
     {
         // get the library name and load the udsm subroutine
         std::string lib_name = props[PLAXIS_LIBRARY_NAME];
+#ifdef _MSC_VER
+        // TODO
+#else
     //    mp_udsm_handle = dlopen(lib_name.c_str(), RTLD_LAZY);
         mp_udsm_handle = dlopen(lib_name.c_str(), RTLD_NOW | RTLD_GLOBAL);
+#endif
         if(mp_udsm_handle == 0)
         {
             KRATOS_ERROR << "Error loading Plaxis material library " << lib_name;
         }
 
         std::string udsm_name = props[USERMOD_NAME];
-        char* error;
+        char* error = nullptr;
+#ifdef _MSC_VER
+        // TODO
+#else
         UserMod = (udsm_t) dlsym(mp_udsm_handle, udsm_name.c_str());
         error = dlerror();
-        if(error != NULL)
+#endif
+        if(error != nullptr)
         {
             KRATOS_ERROR << "Error loading subroutine " << udsm_name << " in the " << lib_name << " library, error message = " << error;
         }

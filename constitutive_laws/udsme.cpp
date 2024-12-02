@@ -1,6 +1,10 @@
 #include <iomanip>
 
+#ifdef _MSC_VER
+#include <Windows.h>
+#else
 #include <dlfcn.h>
+#endif
 #include "constitutive_laws/udsme.h"
 #include "structural_application/structural_application_variables.h"
 
@@ -175,25 +179,30 @@ void UDSMe::InitializeMaterial ( const Properties& props,
 #else
     if (minstances == 0)
     {
+#ifdef _MSC_VER
+        // TODO
+#else
         mp_udsm_handle = dlopen(mLibName.c_str(), RTLD_NOW | RTLD_GLOBAL);
+#endif
         if(mp_udsm_handle == 0)
         {
-            KRATOS_THROW_ERROR(std::runtime_error, "Error loading Plaxis material library", mLibName)
+            KRATOS_ERROR << "Error loading Plaxis material library " << mLibName;
         }
-
+#ifdef _MSC_VER
+        // TODO
+#else
         char* error;
         UserMod = (udsm_t) dlsym(mp_udsm_handle, mName.c_str());
         error = dlerror();
         if(error != NULL)
         {
-            std::stringstream ss;
-            ss << "Error loading subroutine " << mName << " in the " << mLibName << " library, error message = " << error;
-            KRATOS_THROW_ERROR(std::runtime_error, ss.str(), "")
+            KRATOS_ERROR << "Error loading subroutine " << mName << " in the " << mLibName << " library, error message = " << error;
         }
         else
         {
             std::cout << "Loading subroutine " << mName << " in the " << mLibName << " library successfully" << std::endl;
         }
+#endif
     }
     #pragma omp atomic
     ++minstances;
@@ -208,6 +217,7 @@ int UDSMe::Check ( const Properties& props,
                    const ProcessInfo& CurrentProcessInfo ) const
 {
     // DO NOTHING
+    return 0;
 }
 
 /*****************************************************************************/
