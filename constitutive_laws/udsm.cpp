@@ -86,15 +86,88 @@ Vector& UDSM::GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue )
     }
     else if(rThisVariable == STRESSES)
     {
-        if(rValue.size() != mCurrentStress.size())
-            rValue.resize(mCurrentStress.size(), false);
-        noalias(rValue) = mCurrentStress;
+        if(rValue.size() == 6)              // 3D
+        {
+            noalias(rValue) = mCurrentStress;
+        }
+        else if(rValue.size() == 3)         // plane strain
+        {
+            rValue[0] = mCurrentStress[0];
+            rValue[1] = mCurrentStress[1];
+            rValue[2] = mCurrentStress[3];
+        }
+        else
+            KRATOS_ERROR << "Invalid size " << rValue.size();
     }
     else if(rThisVariable == PRESTRESS || rThisVariable == INSITU_STRESS)
     {
         if(rValue.size() != mPrestress.size())
             rValue.resize(mPrestress.size(), false);
         noalias(rValue) = mPrestress;
+    }
+
+    return rValue;
+}
+
+Matrix& UDSM::GetValue ( const Variable<Matrix>& rThisVariable, Matrix& rValue )
+{
+    if(rThisVariable == ELASTIC_TANGENT)
+    {
+        int NonSym;
+        int iStrsDep, iTang = 0, iTimeDep, iAbort = 0;
+        int iPrjDir, iPrjLen;
+        double* props = const_cast<double*>(&mProps[0]);
+
+        Vector Sig0(20);
+        noalias(Sig0) = ZeroVector(20);
+        Sig0[0] = mLastStress[0];
+        Sig0[1] = mLastStress[1];
+        Sig0[2] = mLastStress[2];
+        Sig0[3] = mLastStress[3];
+        Sig0[4] = mLastStress[4];
+        Sig0[5] = mLastStress[5];
+
+        double Swp0 = mLastExcessPorePressure;
+
+        int nStat = mLastStateVariables.size();
+        Vector StVar0(nStat), StVar(nStat);
+        StVar0.clear();
+        StVar.clear();
+
+        // initialize D with elastic matrix
+        int IDTask = 6;
+        Vector D(36);
+        UserMod( &IDTask,
+                 &mModelNumber,
+                 &mIsUndr,
+                 NULL, // iStep
+                 NULL, // iter
+                 NULL, // Iel
+                 NULL, // Int
+                 NULL, NULL, NULL, // X, Y, Z
+                 NULL, // Time0
+                 NULL, // dTime
+                 props,
+                 &Sig0[0],
+                 &Swp0,
+                 &StVar0[0],
+                 NULL,
+                 &D[0],
+                 &mBulkW,
+                 &mCurrentStress[0],
+                 &mCurrentExcessPorePressure,
+                 &mCurrentStateVariables[0],
+                 &mPlasticState,
+                 &nStat,
+                 &NonSym,
+                 &iStrsDep,
+                 &iTimeDep,
+                 &iTang,
+                 &iPrjDir,
+                 &iPrjLen,
+                 &iAbort );
+
+        UDSM::Vector1DToMatrix(D, rValue, NonSym);
     }
 
     return rValue;
@@ -124,9 +197,21 @@ void UDSM::SetValue ( const Variable<Vector>& rThisVariable,
 {
     if(rThisVariable == PRESTRESS || rThisVariable == INSITU_STRESS)
     {
-        if (mPrestress.size() != rValue.size())
-            mPrestress.resize(rValue.size());
-        noalias(mPrestress) = rValue;
+        if (rValue.size() == 6)         // 3D
+        {
+            noalias(mPrestress) = rValue;
+        }
+        else if (rValue.size() == 3)    // plane strain
+        {
+            mPrestress[0] = rValue[0];
+            mPrestress[1] = rValue[1];
+            mPrestress[2] = 0.0;
+            mPrestress[3] = rValue[2];
+            mPrestress[4] = 0.0;
+            mPrestress[5] = 0.0;
+        }
+        else
+            KRATOS_ERROR << "Invalid size " << rValue.size();
     }
 }
 
@@ -164,13 +249,17 @@ void UDSM::InitializeMaterial ( const Properties& props,
                                 const Vector& ShapeFunctionsValues )
 {
     // retrieve soil model number
-    int ModelNumber = static_cast<int>(props[SOIL_MODEL_NUMBER]);
+    mModelNumber = static_cast<int>(props[SOIL_MODEL_NUMBER]);
 
     // retrieve undrained case
-    int IsUndr = static_cast<int>(props[IS_UNDRAINED]);
+    mIsUndr = static_cast<int>(props[IS_UNDRAINED]);
 
     // retrieve material properties
-    const Vector& Props = props[MATERIAL_PARAMETERS];
+    mProps = props[MATERIAL_PARAMETERS];
+
+    // retrieve bulk modulus of water
+    mBulkW = 0.0;
+    if (mIsUndr) mBulkW = props[BULK_W];
 
 #ifdef KRATOS_UDSM_LIBRARY_IS_PROVIDED
     UserMod = udsm_;
@@ -218,7 +307,7 @@ void UDSM::InitializeMaterial ( const Properties& props,
         need_determine_internal_params = props[NEED_DETERMINE_INTERNAL_PARAMS];
 
     // initialize the material
-    this->InitializeMaterial( ModelNumber, IsUndr, Props, need_determine_internal_params );
+    this->InitializeMaterial( mModelNumber, mIsUndr, mProps, need_determine_internal_params );
 }
 
 void UDSM::InitializeMaterial ( int ModelNumber,
@@ -333,15 +422,12 @@ void UDSM::ResetMaterial ( const Properties& props,
 
     int IDTask = 1;
 
-    int ModelNumber = static_cast<int>(props[SOIL_MODEL_NUMBER]);
-    int IsUndr = static_cast<int>(props[IS_UNDRAINED]);
-    const Vector& Props = props[MATERIAL_PARAMETERS];
+    mModelNumber = static_cast<int>(props[SOIL_MODEL_NUMBER]);
+    mIsUndr = static_cast<int>(props[IS_UNDRAINED]);
+    mProps = props[MATERIAL_PARAMETERS];
 
-    double BulkW = 0.0;
-    if (IsUndr)
-    {
-        BulkW = props[BULK_W];
-    }
+    mBulkW = 0.0;
+    if (mIsUndr) mBulkW = props[BULK_W];
 
     Vector Sig0(20);
     noalias(Sig0) = ZeroVector(20);
@@ -354,7 +440,7 @@ void UDSM::ResetMaterial ( const Properties& props,
 
     double Swp0 = mLastExcessPorePressure;
 
-    int nStat = mLastStateVariables.size();
+    int nStat = static_cast<int>(mLastStateVariables.size());
     Vector StVar0(nStat), StVar(nStat);
     StVar0.clear();
     StVar.clear();
@@ -366,8 +452,8 @@ void UDSM::ResetMaterial ( const Properties& props,
     double dummy_T0, dummy_dT;
     double dummy_dEps, dummy_D, dummy_BulkW,
         dummy_Sig, dummy_Swp, dummy_StVar;
-    double* props_pointer = const_cast<double*>(&Props[0]); // cast out the const'ness to use the pointer value and let hope that the UDSM does not change any input parameter.
-    UserMod(&IDTask, &ModelNumber, &IsUndr,
+    double* props_pointer = const_cast<double*>(&mProps[0]); // cast out the const'ness to use the pointer value and let hope that the UDSM does not change any input parameter.
+    UserMod(&IDTask, &mModelNumber, &mIsUndr,
             &iStep, &iTer, &Iel, &Int,
             &dummyX, &dummyY, &dummyZ, &dummy_T0, &dummy_dT,
             props_pointer,
@@ -375,7 +461,7 @@ void UDSM::ResetMaterial ( const Properties& props,
             &Swp0,
             &StVar0[0],
             &dummy_dEps, &dummy_D,
-            &BulkW,
+            &mBulkW,
             &dummy_Sig, &dummy_Swp,
             &StVar[0],
             &dummy_ipl,
@@ -541,16 +627,6 @@ void UDSMImplex::CalculateMaterialResponse ( const Vector& StrainVector,
                                              int CalculateTangent,
                                              bool SaveInternalVariables )
 {
-    int ModelNumber = static_cast<int>(props[SOIL_MODEL_NUMBER]);
-    int IsUndr = static_cast<int>(props[IS_UNDRAINED]);
-    const Vector& Props = props[MATERIAL_PARAMETERS];
-
-    double BulkW = 0.0;
-    if (IsUndr)
-    {
-        BulkW = props[BULK_W];
-    }
-
     double omega = 1.0;
     if (props.Has(UDSM_RELAXATION_FACTOR))
         omega = props[UDSM_RELAXATION_FACTOR]; // relaxation factor
@@ -570,7 +646,7 @@ void UDSMImplex::CalculateMaterialResponse ( const Vector& StrainVector,
             mCurrentExcessPorePressure, mPlasticState, AlgorithmicTangent );
 
     UDSMImplex::StressIntegration( StrainVector, StressVector, input, output,
-            UserMod, omega, proc_info, ModelNumber, IsUndr, BulkW, Props );
+            UserMod, omega, proc_info, mModelNumber, mIsUndr, mBulkW, mProps );
 }
 
 void UDSMImplex::StressIntegration ( const Vector& StrainVector, Vector& StressVector,
@@ -754,16 +830,6 @@ void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
         }
     }
 
-    int ModelNumber = static_cast<int>(props[SOIL_MODEL_NUMBER]);
-    int IsUndr = static_cast<int>(props[IS_UNDRAINED]);
-    const Vector& Props = props[MATERIAL_PARAMETERS];
-
-    double BulkW;
-    if (IsUndr)
-    {
-        BulkW = props[BULK_W];
-    }
-
     if (props.Has(USE_NUMERICAL_TANGENT))
     {
         if (props[USE_NUMERICAL_TANGENT])
@@ -796,7 +862,7 @@ void UDSMImplicit::CalculateMaterialResponse ( const Vector& StrainVector,
             mCurrentExcessPorePressure, mPlasticState, AlgorithmicTangent );
 
     UDSMImplicit::StressIntegration( input, output, UserMod, proc_info,
-            ModelNumber, IsUndr, BulkW, Props, CalculateTangent );
+            mModelNumber, mIsUndr, mBulkW, mProps, CalculateTangent );
 
     if (CalculateStresses)
     {
@@ -1021,10 +1087,10 @@ void UDSMImplicit::StressIntegration ( const UDSM::Input& rInput, UDSM::Output& 
 }
 
 int UDSMImplicit::ComputeNumericalTangent( const UDSM::Input& rInput, const UDSM::Output& rRefOutput,
-                                            Matrix& Tangent,
-                                            const udsm_t UserFun, const UDSM::DebugInfo& pinfo,
-                                            int ModelNumber, int IsUndr, double BulkW, const Vector& Props,
-                                            double epsilon )
+                                           Matrix& Tangent,
+                                           const udsm_t UserFun, const UDSM::DebugInfo& pinfo,
+                                           int ModelNumber, int IsUndr, double BulkW, const Vector& Props,
+                                           double epsilon )
 {
     int IDTask;
     Vector D(36);

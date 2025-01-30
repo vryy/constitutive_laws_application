@@ -22,8 +22,8 @@
 #include "constitutive_laws_application_variables.h"
 
 /**
-    Interface class to incorporate the user-defined soil models from Plaxis to Kratos
-*/
+ * Interface class to incorporate the user-defined soil models from Plaxis to Kratos
+ */
 namespace Kratos
 {
 
@@ -72,7 +72,7 @@ class UDSM : public ConstitutiveLaw
         UDSM();
 
         // Destructor
-        virtual ~UDSM();
+        ~UDSM() override;
 
         // clone
         BaseType::Pointer Clone() const override
@@ -108,6 +108,8 @@ class UDSM : public ConstitutiveLaw
         double& GetValue ( const Variable<double>& rThisVariable, double& rValue ) override;
 
         Vector& GetValue ( const Variable<Vector>& rThisVariable, Vector& rValue ) override;
+
+        Matrix& GetValue ( const Variable<Matrix>& rThisVariable, Matrix& rValue ) override;
 
         void SetValue ( const Variable<int>& rThisVariable, const int& rValue, const ProcessInfo& rCurrentProcessInfo ) override;
 
@@ -185,6 +187,9 @@ class UDSM : public ConstitutiveLaw
         Vector mLastStateVariables;         // link with StVar0 variable
         int mPlasticState;                  // link with iPl variable
         int mModelNumber;                   // to choose the soil model number, link with iMod variable
+        int mIsUndr;                        // flag for undrained state
+        double mBulkW;                      // bulk modulus of water
+        Vector mProps;                      // vector of material properties
 
         #ifndef KRATOS_UDSM_LIBRARY_IS_PROVIDED
         static unsigned long long minstances; // values to store the number of instances in the memory of this constitutive law
@@ -229,7 +234,7 @@ class UDSMImplex : public UDSM
         UDSMImplex() : BaseType() {}
 
         // Destructor
-        virtual ~UDSMImplex() {}
+        ~UDSMImplex() override {}
 
         // clone
         ConstitutiveLaw::Pointer Clone() const final
@@ -269,7 +274,7 @@ class UDSMImplicit : public UDSM
         UDSMImplicit() : BaseType() {}
 
         // Destructor
-        virtual ~UDSMImplicit() {}
+        ~UDSMImplicit() override {}
 
         // clone
         ConstitutiveLaw::Pointer Clone() const final
@@ -296,13 +301,12 @@ class UDSMImplicit : public UDSM
                                         int CalculateTangent = 1 );
 
         static int ComputeNumericalTangent( const UDSM::Input& rInput, const UDSM::Output& rRefOutput,
-                                             Matrix& Tangent,
-                                             const udsm_t UserFun, const UDSM::DebugInfo& pinfo,
-                                             int ModelNumber, int IsUndr, double BulkW, const Vector& Props,
-                                             double epsilon );
+                                            Matrix& Tangent,
+                                            const udsm_t UserFun, const UDSM::DebugInfo& pinfo,
+                                            int ModelNumber, int IsUndr, double BulkW, const Vector& Props,
+                                            double epsilon );
 };
 
 }  // namespace Kratos.
 
 #endif // KRATOS_UDSM_H_INCLUDED  defined
-
