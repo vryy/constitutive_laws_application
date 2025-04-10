@@ -29,8 +29,6 @@ KratosConstitutiveLawsApplication::KratosConstitutiveLawsApplication():
 
 void KratosConstitutiveLawsApplication::Register()
 {
-    // calling base class register to register Kratos components
-    KratosApplication::Register();
     std::cout << "Initializing KratosConstitutiveLawsApplication... " << std::endl;
 
     KRATOS_REGISTER_VARIABLE(PLAXIS_LIBRARY_NAME)
