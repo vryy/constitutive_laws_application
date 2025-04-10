@@ -1,8 +1,5 @@
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
-include_directories( ${CMAKE_SOURCE_DIR}/kratos )
-include_directories( ${CMAKE_SOURCE_DIR}/applications )
-include_directories( ${CMAKE_SOURCE_DIR}/applications/structural_application )
+set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "")
+set(CONSTITUTIVE_LAWS_APPLICATION_COMPILE_DEFS "")
 
 ## generate variables with the sources
 set( CONSTITUTIVE_LAWS_APPLICATION_SOURCES
@@ -18,7 +15,7 @@ set( CONSTITUTIVE_LAWS_APPLICATION_SOURCES
 )
 
 if(CMAKE_Fortran_COMPILER)
-    add_definitions(-DKRATOS_ENABLE_FORTRAN_CODE)
+    set(CONSTITUTIVE_LAWS_APPLICATION_COMPILE_DEFS "${CONSTITUTIVE_LAWS_APPLICATION_COMPILE_DEFS};KRATOS_ENABLE_FORTRAN_CODE")
     set(CONSTITUTIVE_LAWS_APPLICATION_SOURCES
         ${CONSTITUTIVE_LAWS_APPLICATION_SOURCES}
         ${CMAKE_CURRENT_SOURCE_DIR}/constitutive_laws/umat.cpp
@@ -30,30 +27,30 @@ if(CMAKE_Fortran_COMPILER)
 endif()
 
 if(DEFINED UMAT_LIBRARY)
-    add_definitions(-DKRATOS_UMAT_LIBRARY_IS_PROVIDED)
+    set(CONSTITUTIVE_LAWS_APPLICATION_COMPILE_DEFS "${CONSTITUTIVE_LAWS_APPLICATION_COMPILE_DEFS};KRATOS_UMAT_LIBRARY_IS_PROVIDED")
 endif()
 if(DEFINED UDSM_LIBRARY)
-    add_definitions(-DKRATOS_UDSM_LIBRARY_IS_PROVIDED)
+    set(CONSTITUTIVE_LAWS_APPLICATION_COMPILE_DEFS "${CONSTITUTIVE_LAWS_APPLICATION_COMPILE_DEFS};KRATOS_UDSM_LIBRARY_IS_PROVIDED")
 endif()
 
 if(DEFINED OPENSEES_DIR)
-    include_directories( ${OPENSEES_DIR} )
-    include_directories( ${OPENSEES_DIR}/SRC )
-    include_directories( ${OPENSEES_DIR}/SRC/material )
-    include_directories( ${OPENSEES_DIR}/SRC/material/nD )
-    include_directories( ${OPENSEES_DIR}/SRC/material/nD/UWmaterials )
-    include_directories( ${OPENSEES_DIR}/SRC/matrix )
-    include_directories( ${OPENSEES_DIR}/SRC/domain/component )
-    include_directories( ${OPENSEES_DIR}/SRC/tagged )
-    include_directories( ${OPENSEES_DIR}/SRC/handler )
-    include_directories( ${OPENSEES_DIR}/SRC/actor/actor )
-    include_directories( ${OPENSEES_DIR}/SRC/recorder/response )
-    include_directories( ${OPENSEES_DIR}/SRC/element )
+    set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS};${OPENSEES_DIR}")
+    set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS};${OPENSEES_DIR}/SRC")
+    set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS};${OPENSEES_DIR}/SRC/material")
+    set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS};${OPENSEES_DIR}/SRC/material/nD")
+    set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS};${OPENSEES_DIR}/SRC/material/nD/UWmaterials")
+    set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS};${OPENSEES_DIR}/SRC/matrix")
+    set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS};${OPENSEES_DIR}/SRC/domain/component")
+    set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS};${OPENSEES_DIR}/SRC/tagged")
+    set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS};${OPENSEES_DIR}/SRC/handler")
+    set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS};${OPENSEES_DIR}/SRC/actor/actor")
+    set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS};${OPENSEES_DIR}/SRC/recorder/response")
+    set(CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS "${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS};${OPENSEES_DIR}/SRC/element")
     find_library( OPENSEES_LIBRARY NAMES OpenSees PATHS ${OPENSEES_DIR}/lib NO_DEFAULT_PATH )
     find_library( OPENSEES_BLAS_LIBRARY NAMES Blas PATHS ${OPENSEES_DIR}/lib NO_DEFAULT_PATH )
     find_library( OPENSEES_LAPACK_LIBRARY NAMES Lapack PATHS ${OPENSEES_DIR}/lib NO_DEFAULT_PATH )
     set(OPENSEES_LIBRARIES ${OPENSEES_LIBRARY} ${OPENSEES_LAPACK_LIBRARY} ${OPENSEES_BLAS_LIBRARY})
-    add_definitions( -DKRATOS_USE_OPENSEES )
+    set(CONSTITUTIVE_LAWS_APPLICATION_COMPILE_DEFS "${CONSTITUTIVE_LAWS_APPLICATION_COMPILE_DEFS};KRATOS_USE_OPENSEES")
     message("OpenSees directory:" ${OPENSEES_DIR})
     message("OpenSees libraries:" ${OPENSEES_LIBRARIES})
     set(CONSTITUTIVE_LAWS_APPLICATION_SOURCES
@@ -63,22 +60,32 @@ if(DEFINED OPENSEES_DIR)
 endif()
 
 ###############################################################
-## define library Kratos which defines the basic python interface
-add_library(KratosConstitutiveLawsApplication SHARED ${CONSTITUTIVE_LAWS_APPLICATION_SOURCES} )
-target_link_libraries( KratosConstitutiveLawsApplication KratosCore )
-target_link_libraries( KratosConstitutiveLawsApplication KratosStructuralApplication )
+add_library(KratosConstitutiveLawsApplicationDependencies INTERFACE)
 if((${CMAKE_SYSTEM_NAME} MATCHES "Linux"))
-    target_link_libraries( KratosConstitutiveLawsApplication gfortran )
-    target_link_libraries( KratosConstitutiveLawsApplication dl )
+    target_link_libraries( KratosConstitutiveLawsApplicationDependencies INTERFACE gfortran )
+    target_link_libraries( KratosConstitutiveLawsApplicationDependencies INTERFACE dl )
 endif()
-target_link_libraries( KratosConstitutiveLawsApplication ${OPENSEES_LIBRARIES} )
+if(DEFINED OPENSEES_DIR)
+    target_link_libraries( KratosConstitutiveLawsApplicationDependencies INTERFACE ${OPENSEES_LIBRARIES} )
+endif()
 if(DEFINED UMAT_LIBRARY)
-    target_link_libraries( KratosConstitutiveLawsApplication ${UMAT_LIBRARY} )
+    target_link_libraries( KratosConstitutiveLawsApplicationDependencies INTERFACE ${UMAT_LIBRARY} )
 endif()
 if(DEFINED UDSM_LIBRARY)
-    target_link_libraries( KratosConstitutiveLawsApplication ${UDSM_LIBRARY} )
+    target_link_libraries( KratosConstitutiveLawsApplicationDependencies INTERFACE ${UDSM_LIBRARY} )
 endif()
-set_target_properties(KratosConstitutiveLawsApplication PROPERTIES COMPILE_DEFINITIONS "KRATOS_CORE=IMPORT;CONSTITUTIVE_LAWS_APPLICATION=EXPORT;STRUCTURAL_APPLICATION=IMPORT")
+
+## define library Kratos which defines the basic python interface
+add_library(KratosConstitutiveLawsApplication SHARED ${CONSTITUTIVE_LAWS_APPLICATION_SOURCES} )
+target_link_libraries( KratosConstitutiveLawsApplication PRIVATE KratosCore )
+target_link_libraries( KratosConstitutiveLawsApplication PRIVATE KratosStructuralApplication )
+target_link_libraries( KratosConstitutiveLawsApplication PUBLIC KratosConstitutiveLawsApplicationDependencies )
+
+target_include_directories( KratosConstitutiveLawsApplication PUBLIC ${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS})
+
+target_compile_definitions(KratosConstitutiveLawsApplication PRIVATE KRATOS_CORE=IMPORT CONSTITUTIVE_LAWS_APPLICATION=EXPORT STRUCTURAL_APPLICATION=IMPORT)
+target_compile_definitions(KratosConstitutiveLawsApplication PUBLIC ${CONSTITUTIVE_LAWS_APPLICATION_COMPILE_DEFS})
+
 set_target_properties(KratosConstitutiveLawsApplication PROPERTIES PREFIX "")
 install(TARGETS KratosConstitutiveLawsApplication DESTINATION libs )
 ###############################################################
