@@ -12,6 +12,14 @@
 #include "constitutive_laws_application_variables.h"
 #include "structural_application/structural_application_variables.h"
 
+#ifdef _WIN32
+// Intel Fortran compiler on Windows does not append underscores to names
+// and also uses uppercase for the names
+#define umat_wrapper_fortran UMAT_WRAPPER
+#else
+#define umat_wrapper_fortran umat_wrapper_
+#endif
+
 /**
  * wrapper function for calling the UMAT fortran subroutine
  * @param STRESS ......... the vector of stresses
@@ -53,7 +61,7 @@
  * @param KINC ...........
  * @param MATERIALNUMBER . identifier of the UMAT subroutine to be selected
  */
-extern "C" void umat_wrapper_( double* STRESS, double* STATEV, double* DDSDDE, double* SSE, double* SPD, double* SCD,
+extern "C" void umat_wrapper_fortran( double* STRESS, double* STATEV, double* DDSDDE, double* SSE, double* SPD, double* SCD,
                                double* RPL, double* DDSDDT, double* DRPLDE, double* DRPLDT, double* STRAN, double* DSTRAN,
                                double* TIME, double* DTIME, double* TEMP, double* DTEMP, double* PREDEF, double* DPRED,
                                char* MATERL, int* NDI, int* NSHR, int* NTENS, int* NSTATV, double* PROPS, int* NPROPS,
@@ -231,7 +239,7 @@ void Umat::CalculateMaterialResponse( const Vector& StrainVector,
     // make sure that for backward compatibility the new parameters are initialized as NULL pointers for all
     // other umat materials
     //KRATOS_WATCH("before calling umat");
-    umat_wrapper_( STRESS, STATEV, DDSDDE.data(), NULL, NULL, NULL, NULL, DDSDDT.data(), DRPLDE.data(), NULL, STRAN, DSTRAN,
+    umat_wrapper_fortran( STRESS, STATEV, DDSDDE.data(), NULL, NULL, NULL, NULL, DDSDDT.data(), DRPLDE.data(), NULL, STRAN, DSTRAN,
                    TIM, DTIME, NULL, NULL, NULL, NULL, NULL, NDI, NSHR, NTENS, NSTATV, PROPS, NPROPS,
                    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NPT, NULL, NULL, NULL, NULL, MaterialNumber );
     //KRATOS_WATCH("after calling umat");

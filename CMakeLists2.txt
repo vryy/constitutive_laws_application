@@ -21,6 +21,8 @@ if(CMAKE_Fortran_COMPILER)
     set(CONSTITUTIVE_LAWS_APPLICATION_SOURCES
         ${CONSTITUTIVE_LAWS_APPLICATION_SOURCES}
         ${CMAKE_CURRENT_SOURCE_DIR}/constitutive_laws/umat.cpp
+    )
+    add_library(KratosConstitutiveLawsApplicationUmatLibrary STATIC
         ${CMAKE_CURRENT_SOURCE_DIR}/custom_external_libraries/umat/mises_umat.f
         ${CMAKE_CURRENT_SOURCE_DIR}/custom_external_libraries/umat/umat_hypo.f
         ${CMAKE_CURRENT_SOURCE_DIR}/custom_external_libraries/umat/umat_fortran_wrapper.f
@@ -82,6 +84,9 @@ add_library(KratosConstitutiveLawsApplication SHARED ${CONSTITUTIVE_LAWS_APPLICA
 target_link_libraries( KratosConstitutiveLawsApplication PRIVATE KratosCore )
 target_link_libraries( KratosConstitutiveLawsApplication PRIVATE KratosStructuralApplication )
 target_link_libraries( KratosConstitutiveLawsApplication PUBLIC KratosConstitutiveLawsApplicationDependencies )
+if(CMAKE_Fortran_COMPILER)
+    target_link_libraries( KratosConstitutiveLawsApplication PRIVATE KratosConstitutiveLawsApplicationUmatLibrary )
+endif()
 
 target_include_directories( KratosConstitutiveLawsApplication PUBLIC ${CONSTITUTIVE_LAWS_APPLICATION_INCLUDE_DIRS})
 

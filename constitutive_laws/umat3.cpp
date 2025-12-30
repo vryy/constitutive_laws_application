@@ -362,8 +362,8 @@ void Umat3::InitializeMaterial( const Properties& props,
 
         std::string umat_name = props[UMAT_NAME];
         Umat = (umat_t) DLL::GetSymbol(mp_umat_handle, umat_name);
-        const char* error = DLL::GetError();
-        if(error != nullptr)
+        auto error = DLL::GetError();
+        if(error)
         {
             KRATOS_ERROR << "Error loading subroutine " << umat_name << " in the " << lib_name << " library"
                          << ", error message = " << DLL::GetErrorMessage(error);

@@ -262,8 +262,8 @@ void UDSM::InitializeMaterial ( const Properties& props,
 
         std::string udsm_name = props[USERMOD_NAME];
         UserMod = (udsm_t) DLL::GetSymbol(mp_udsm_handle, udsm_name);
-        const char* error = DLL::GetError();
-        if(error != nullptr)
+        auto error = DLL::GetError();
+        if(error)
         {
             KRATOS_ERROR << "Error loading subroutine " << udsm_name << " in the " << lib_name << " library"
                          << ", error message = " << DLL::GetErrorMessage(error);

@@ -208,8 +208,8 @@ void Umat2::InitializeMaterial( const Properties& props,
                 double* COORDS, double* DROT, double* PNEWDT, double* CELENT, double* DFGRD0,
                 double* DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC))
            DLL::GetSymbol(mp_umat_handle, umat_name.c_str());
-    const char* error = DLL::GetError();
-    if(error != nullptr)
+    auto error = DLL::GetError();
+    if(error)
     {
         KRATOS_ERROR << "Error loading subroutine " << umat_name << " in the " << lib_name << " library"
                      << ", error message = " << DLL::GetErrorMessage(error);

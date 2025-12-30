@@ -25,6 +25,18 @@
 namespace Kratos
 {
 
+// forward declaration
+namespace DLL
+{
+    inline std::string GetErrorMessage(
+#ifdef _WIN32
+        DWORD error
+#else
+        const char* error
+#endif
+    );
+}
+
 /**
  * Shield class to platform-independent load the shared library/DLL and unload when needed
  */
@@ -40,9 +52,15 @@ struct SharedLibraryHandleShield
 
         if (!mHandle)
         {
+#ifdef _WIN32
+            DWORD error = PLATFORM_GET_ERROR();
+            std::cerr << "CRITICAL ERROR: Could not load " << LibraryName
+                      << ". Reason: " << DLL::GetErrorMessage(error) << std::endl;
+#else
             const char* error = PLATFORM_GET_ERROR();
             std::cerr << "CRITICAL ERROR: Could not load " << LibraryName
-                      << ". Reason: " << error << std::endl;
+                      << ". Reason: " << (error ? error : "Unknown error") << std::endl;
+#endif
         }
     }
 
@@ -95,37 +113,40 @@ inline void* GetSymbol(void* handle, const std::string& SymbolName)
     return PLATFORM_GET_SYM(handle, SymbolName.c_str());
 }
 
-/**
- * Query the recent error
- */
+#ifdef _WIN32
+inline DWORD GetError()
+{
+    return PLATFORM_GET_ERROR();
+}
+#else
 inline const char* GetError()
 {
     return PLATFORM_GET_ERROR();
 }
+#endif
 
-/**
- * Function to get the error message behind the error code
- */
-inline std::string GetErrorMessage(const char* error)
+inline std::string GetErrorMessage(
+#ifdef _WIN32
+    DWORD error
+#else
+    const char* error
+#endif
+)
 {
 #ifdef _WIN32
-    DWORD errorId = error;
-    if (errorId == 0) return "No error";
+    if (error == 0) return "No error";
 
     LPSTR messageBuffer = nullptr;
-    // Ask Windows to translate the numeric ID into a human-readable string
     size_t size = FormatMessageA(
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-        NULL, errorId, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
         (LPSTR)&messageBuffer, 0, NULL);
 
     std::string message(messageBuffer, size);
 
-    // Clean up the buffer allocated by Windows
     LocalFree(messageBuffer);
 
-    // Append the number for complete debugging: "Message (ID)"
-    return message + " (Code: " + std::to_string(errorId) + ")";
+    return message + " (Code: " + std::to_string(error) + ")";
 #else
     return (error) ? std::string(error) : "No error or error already cleared";
 #endif
