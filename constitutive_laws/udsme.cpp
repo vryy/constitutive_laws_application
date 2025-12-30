@@ -1,10 +1,6 @@
 #include <iomanip>
 
-#ifdef _MSC_VER
-#include <Windows.h>
-#else
-#include <dlfcn.h>
-#endif
+#include "custom_utilities/shared_library_handle_shield.h"
 #include "constitutive_laws/udsme.h"
 #include "structural_application/structural_application_variables.h"
 
@@ -177,13 +173,8 @@ void UDSMe::InitializeMaterial ( const Properties& props,
 #ifdef KRATOS_UDSM_LIBRARY_IS_PROVIDED
     UserMod = udsm_;
 #else
-    if (minstances == 0)
     {
-#ifdef _MSC_VER
-        // TODO
-#else
-        mp_udsm_handle = dlopen(mLibName.c_str(), RTLD_NOW | RTLD_GLOBAL);
-#endif
+        mp_udsm_handle = DLL::GetSharedLibraryHandle(mLibName);
         if(mp_udsm_handle == 0)
         {
             KRATOS_ERROR << "Error loading Plaxis material library " << mLibName;
@@ -191,10 +182,9 @@ void UDSMe::InitializeMaterial ( const Properties& props,
 #ifdef _MSC_VER
         // TODO
 #else
-        char* error;
-        UserMod = (udsm_t) dlsym(mp_udsm_handle, mName.c_str());
-        error = dlerror();
-        if(error != NULL)
+        UserMod = (udsm_t) DLL::GetSymbol(mp_udsm_handle, mName);
+        const char* error = DLL::GetError();
+        if(error != nullptr)
         {
             KRATOS_ERROR << "Error loading subroutine " << mName << " in the " << mLibName << " library, error message = " << error;
         }
@@ -204,8 +194,6 @@ void UDSMe::InitializeMaterial ( const Properties& props,
         }
 #endif
     }
-    #pragma omp atomic
-    ++minstances;
 #endif
 
     // initialize the material

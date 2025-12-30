@@ -181,4 +181,3 @@ class UDSMeImplicit : public UDSMe
 }  // namespace Kratos.
 
 #endif // KRATOS_UDSM_E_H_INCLUDED  defined
-

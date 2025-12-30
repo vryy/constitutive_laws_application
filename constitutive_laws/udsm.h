@@ -192,13 +192,9 @@ class UDSM : public ConstitutiveLaw
         Vector mProps;                      // vector of material properties
 
         #ifndef KRATOS_UDSM_LIBRARY_IS_PROVIDED
-        static unsigned long long minstances; // values to store the number of instances in the memory of this constitutive law
-        static unsigned long long mmaxinstances; // values to store the maximum number of instances in the memory of this constitutive law
-        static void* mp_udsm_handle; // handle to udsm library
-        static udsm_t UserMod; // pointer to UDSM function
-        #else
-        udsm_t UserMod; // pointer to UDSM function
+        void* mp_udsm_handle; // handle to udsm library
         #endif
+        udsm_t UserMod; // pointer to UDSM function
 
         void InitializeMaterial( int ModelNumber, int IsUndrained, const Vector& Props, bool need_determine_internal_params = false );
 

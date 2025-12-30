@@ -1,10 +1,3 @@
-#include <iostream>
-#ifdef _MSC_VER
-#include <Windows.h>
-#else
-#include <dlfcn.h>
-#endif
-
 #include "includes/define.h"
 #include "constitutive_laws/umat3.h"
 #include "includes/constitutive_law.h"
@@ -16,6 +9,7 @@
 #include "includes/ublas_interface.h"
 #include "structural_application/structural_application_variables.h"
 #include "structural_application/custom_utilities/sd_math_utils.h"
+#include "custom_utilities/shared_library_handle_shield.h"
 
 namespace Kratos
 {
@@ -27,11 +21,6 @@ typedef Kratos::ConstitutiveLaw::GeometryType GeometryType;
 const int Umat3::A2K[] = {0, 1, 2, 3, 5, 4};
 const int Umat3::K2A[] = {0, 1, 2, 3, 5, 4};
 const int Umat3::PS[]  = {0, 1, 3};
-#ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
-unsigned long long Umat3::minstances = 0;
-void* Umat3::mp_umat_handle = 0;
-umat_t Umat3::Umat = 0;
-#endif
 
 #ifdef KRATOS_UMAT_LIBRARY_IS_PROVIDED
 extern "C" void umat_( double* STRESS, double* STATEV, double* DDSDDE, double* SSE, double* SPD, double* SCD,
@@ -43,22 +32,19 @@ extern "C" void umat_( double* STRESS, double* STATEV, double* DDSDDE, double* S
 #endif
 
 Umat3::Umat3()
-{}
+{
+    #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
+    mp_umat_handle = nullptr;
+    #endif
+    Umat = nullptr;
+}
 
 Umat3::~Umat3()
 {
     #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
-    --minstances;
-    if(minstances == 0)
-    {
-#ifdef _MSC_VER
-        // TODO
-#else
-        dlclose(mp_umat_handle);
-#endif
-        std::cout << "Successfully unload the Umat shared library/DLL" << std::endl;
-    }
+    mp_umat_handle = nullptr;
     #endif
+    Umat = nullptr;
 }
 
 int Umat3::Check( const Kratos::Properties& props, const GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo ) const
@@ -365,46 +351,28 @@ void Umat3::InitializeMaterial( const Properties& props,
     mIncrement = 0;
 
     #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
-    if (minstances == 0)
     {
         // get the library name and load the udsm subroutine
         std::string lib_name = props[ABAQUS_LIBRARY_NAME];
-#ifdef _MSC_VER
-        // TODO
-#else
-        // mp_umat_handle = dlopen(lib_name.c_str(), RTLD_LAZY);
-        mp_umat_handle = dlopen(lib_name.c_str(), RTLD_NOW | RTLD_GLOBAL);
-#endif
-        if(mp_umat_handle == 0)
+        mp_umat_handle = DLL::GetSharedLibraryHandle(lib_name);
+        if(mp_umat_handle == nullptr)
         {
-            KRATOS_ERROR << "Error loading Abaqus material library " << lib_name
-#ifdef _MSC_VER
-                // TODO
-                ;
-#else
-                         << ", error message: " << dlerror();
-#endif
+            KRATOS_ERROR << "Error loading Abaqus material library " << lib_name;
         }
 
         std::string umat_name = props[UMAT_NAME];
-        char* error = nullptr;
-#ifdef _MSC_VER
-        // TODO
-#else
-        Umat = (umat_t) dlsym(mp_umat_handle, umat_name.c_str());
-        error = dlerror();
-#endif
+        Umat = (umat_t) DLL::GetSymbol(mp_umat_handle, umat_name);
+        const char* error = DLL::GetError();
         if(error != nullptr)
         {
-            KRATOS_ERROR << "Error loading subroutine " << umat_name << " in the " << lib_name << " library, error message = " << error;
+            KRATOS_ERROR << "Error loading subroutine " << umat_name << " in the " << lib_name << " library"
+                         << ", error message = " << DLL::GetErrorMessage(error);
         }
         else
         {
             std::cout << "Successfully load Umat from " << lib_name << std::endl;
         }
     }
-
-    ++minstances;
     #endif
 }
 
@@ -772,6 +740,7 @@ void Umat3::CalculateMaterialResponse( const Vector& StrainVector,
         // TODO: export the variable SSE, SPD, SCD, RPL
     }
 
+    // std::cout << "Stress and tangent at element " << mElementId << ", point " << mIntPointIndex << std::endl;
     // KRATOS_WATCH(StressVector)
     // KRATOS_WATCH(AlgorithmicTangent)
 }

@@ -1,11 +1,3 @@
-#include <iostream>
-
-#ifdef _MSC_VER
-#include <Windows.h>
-#else
-#include <dlfcn.h>
-#endif
-
 #include "includes/define.h"
 #include "constitutive_laws/umat3.h"
 #include "constitutive_laws/umat3e.h"
@@ -17,6 +9,7 @@
 #include "includes/ublas_interface.h"
 #include "geometries/geometry.h"
 #include "structural_application/structural_application_variables.h"
+#include "custom_utilities/shared_library_handle_shield.h"
 
 // #define DEBUG_UMAT
 #define DEBUG_ELEMENT_ID    1
@@ -29,26 +22,20 @@ namespace Kratos
 
 typedef Kratos::ConstitutiveLaw::GeometryType GeometryType;
 
-unsigned long long Umat3e::minstances = 0;
-void* Umat3e::mp_umat_handle = 0;
-umat_t Umat3e::Umat = 0;
-
 Umat3e::Umat3e()
 {
+    #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
+    mp_umat_handle = nullptr;
+    #endif
+    Umat = nullptr;
 }
 
 Umat3e::~Umat3e()
 {
-    --minstances;
-    if(minstances == 0)
-    {
-#ifdef _MSC_VER
-        // TODO
-#else
-        dlclose(mp_umat_handle);
-#endif
-        std::cout << "Successfully unload the Umat shared library/DLL" << std::endl;
-    }
+    #ifndef KRATOS_UMAT_LIBRARY_IS_PROVIDED
+    mp_umat_handle = nullptr;
+    #endif
+    Umat = nullptr;
 }
 
 int Umat3e::Check( const Kratos::Properties& props, const GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo ) const
@@ -457,43 +444,25 @@ void Umat3e::InitializeMaterial( const Properties& props,
     mIncrement = 0;
     mPresetInternalVariables = false;
 
-    if (minstances == 0)
     {
-#ifdef _MSC_VER
-        // TODO
-#else
-        // mp_umat_handle = dlopen(lib_name.c_str(), RTLD_LAZY);
-        mp_umat_handle = dlopen(mLibName.c_str(), RTLD_NOW | RTLD_GLOBAL);
-#endif
-        if(mp_umat_handle == 0)
+        mp_umat_handle = DLL::GetSharedLibraryHandle(mLibName);
+        if(mp_umat_handle == nullptr)
         {
-            KRATOS_ERROR << "Error loading Abaqus material library " << mLibName
-#ifdef _MSC_VER
-                // TODO
-                ;
-#else
-               << ", error message: " << dlerror();
-#endif
+            KRATOS_ERROR << "Error loading Abaqus material library " << mLibName;
         }
 
-        char* error = nullptr;
-#ifdef _MSC_VER
-        // TODO
-#else
-        Umat = (umat_t) dlsym(mp_umat_handle, mName.c_str());
-        error = dlerror();
+        Umat = (umat_t) DLL::GetSymbol(mp_umat_handle, mName);
+        const char* error = DLL::GetError();
         if(error != nullptr)
         {
-            KRATOS_ERROR << "Error loading subroutine " << mName << " in the " << mLibName << " library, error message = " << error;
+            KRATOS_ERROR << "Error loading subroutine " << mName << " in the " << mLibName << " library"
+                         << ", error message = " << DLL::GetErrorMessage(error);
         }
         else
         {
             std::cout << "Successfully load Umat from " << mLibName << std::endl;
         }
-#endif
     }
-
-    ++minstances;
 }
 
 void Umat3e::ResetMaterial( const Properties& props,

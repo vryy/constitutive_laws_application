@@ -1,11 +1,3 @@
-#include <iostream>
-
-#ifdef _MSC_VER
-#include <Windows.h>
-#else
-#include <dlfcn.h>
-#endif
-
 #include "includes/define.h"
 #include "constitutive_laws/umat2.h"
 #include "includes/constitutive_law.h"
@@ -17,6 +9,7 @@
 #include "includes/ublas_interface.h"
 #include "constitutive_laws_application_variables.h"
 #include "structural_application/structural_application_variables.h"
+#include "custom_utilities/shared_library_handle_shield.h"
 
 namespace Kratos
 {
@@ -31,18 +24,12 @@ const int Umat2::PS[] = {0, 1, 3};
 
 Umat2::Umat2()
 {
+    mp_umat_handle = nullptr;
 }
 
 Umat2::~Umat2()
 {
-    if (mp_umat_handle != 0)
-    {
-#ifdef _MSC_VER
-        // TODO
-#else
-        dlclose(mp_umat_handle);
-#endif
-    }
+    mp_umat_handle = nullptr;
 }
 
 int Umat2::Check( const Kratos::Properties& props, const GeometryType& geom, const Kratos::ProcessInfo& CurrentProcessInfo ) const
@@ -207,35 +194,26 @@ void Umat2::InitializeMaterial( const Properties& props,
 
     // get the library name and load the udsm subroutine
     std::string lib_name = props[ABAQUS_LIBRARY_NAME];
-#ifdef _MSC_VER
-    // TODO
-#else
-//    mp_umat_handle = dlopen(lib_name.c_str(), RTLD_LAZY);
-    mp_umat_handle = dlopen(lib_name.c_str(), RTLD_NOW | RTLD_GLOBAL);
-#endif
-    if(mp_umat_handle == 0)
+    mp_umat_handle = DLL::GetSharedLibraryHandle(lib_name);
+    if(mp_umat_handle == nullptr)
     {
         KRATOS_ERROR << "The Abaqus material library " << lib_name << " does not exist";
     }
 
     std::string umat_name = props[UMAT_NAME];
-#ifdef _MSC_VER
-    // TODO
-#else
-    char* error;
     Umat = (void (*)(double* STRESS, double* STATEV, double* DDSDDE, double* SSE, double* SPD, double* SCD,
                 double* RPL, double* DDSDDT, double* DRPLDE, double* DRPLDT, double* STRAN, double* DSTRAN,
                 double* TIME, double* DTIME, double* TEMP, double* DTEMP, double* PREDEF, double* DPRED,
                 char* CMNAME, int* NDI, int* NSHR, int* NTENS, int* NSTATV, double* PROPS, int* NPROPS,
                 double* COORDS, double* DROT, double* PNEWDT, double* CELENT, double* DFGRD0,
                 double* DFGRD1, int* NOEL, int* NPT, int* KSLAY, int* KSPT, int* KSTEP, int* KINC))
-           dlsym(mp_umat_handle, umat_name.c_str());
-    error = dlerror();
-    if(error != NULL)
+           DLL::GetSymbol(mp_umat_handle, umat_name.c_str());
+    const char* error = DLL::GetError();
+    if(error != nullptr)
     {
-        KRATOS_ERROR << "Error loading subroutine " << umat_name << " in the " << lib_name << " library, error message = " << error;
+        KRATOS_ERROR << "Error loading subroutine " << umat_name << " in the " << lib_name << " library"
+                     << ", error message = " << DLL::GetErrorMessage(error);
     }
-#endif
 }
 
 void Umat2::ResetMaterial( const Properties& props,
