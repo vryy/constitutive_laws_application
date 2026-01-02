@@ -179,20 +179,13 @@ void UDSMe::InitializeMaterial ( const Properties& props,
         {
             KRATOS_ERROR << "Error loading Plaxis material library " << mLibName;
         }
-#ifdef _MSC_VER
-        // TODO
-#else
         UserMod = (udsm_t) DLL::GetSymbol(mp_udsm_handle, mName);
-        const char* error = DLL::GetError();
-        if(error != nullptr)
+        auto error = DLL::GetError();
+        if(error)
         {
-            KRATOS_ERROR << "Error loading subroutine " << mName << " in the " << mLibName << " library, error message = " << error;
+            KRATOS_ERROR << "Error loading subroutine " << mName << " in the " << mLibName << " library"
+                         << ", error message = " << DLL::GetErrorMessage(error);
         }
-        else
-        {
-            std::cout << "Loading subroutine " << mName << " in the " << mLibName << " library successfully" << std::endl;
-        }
-#endif
     }
 #endif
 

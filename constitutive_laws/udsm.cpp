@@ -268,10 +268,6 @@ void UDSM::InitializeMaterial ( const Properties& props,
             KRATOS_ERROR << "Error loading subroutine " << udsm_name << " in the " << lib_name << " library"
                          << ", error message = " << DLL::GetErrorMessage(error);
         }
-        else
-        {
-            std::cout << "Loading subroutine " << udsm_name << " in the " << lib_name << " library successfully" << std::endl;
-        }
     }
 #endif
 

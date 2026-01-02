@@ -366,11 +366,7 @@ void Umat3::InitializeMaterial( const Properties& props,
         if(error)
         {
             KRATOS_ERROR << "Error loading subroutine " << umat_name << " in the " << lib_name << " library"
-                         << ", error message = " << DLL::GetErrorMessage(error);
-        }
-        else
-        {
-            std::cout << "Successfully load Umat from " << lib_name << std::endl;
+                         << ", error message: " << DLL::GetErrorMessage(error);
         }
     }
     #endif
