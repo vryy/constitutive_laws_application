@@ -36,7 +36,7 @@ class UDSMe : public UDSM
         UDSMe() : BaseType() {}
 
         // Destructor
-        virtual ~UDSMe() {}
+        ~UDSMe() override {}
 
         // clone
         ConstitutiveLaw::Pointer Clone() const override
@@ -45,15 +45,15 @@ class UDSMe : public UDSM
             return p_clone;
         }
 
-        bool Has ( const Variable<int>& rThisVariable ) final;
+        bool Has ( const Variable<int>& rThisVariable ) const final;
 
-        bool Has ( const Variable<bool>& rThisVariable ) final;
+        bool Has ( const Variable<bool>& rThisVariable ) const final;
 
-        bool Has ( const Variable<double>& rThisVariable ) final;
+        bool Has ( const Variable<double>& rThisVariable ) const final;
 
-        bool Has ( const Variable<Vector>& rThisVariable ) final;
+        bool Has ( const Variable<Vector>& rThisVariable ) const final;
 
-        // bool Has ( const Variable<std::string>& rThisVariable ) final;
+        // bool Has ( const Variable<std::string>& rThisVariable ) const final;
 
         int& GetValue ( const Variable<int>& rThisVariable, int& rValue ) final;
 

@@ -23,6 +23,7 @@ public:
 
     // Type Definitions
     typedef ConstitutiveLaw BaseType;
+    typedef BaseType::SizeType SizeType;
     typedef array_1d<double, 81> MaterialTensorType;
     KRATOS_CLASS_POINTER_DEFINITION( Umat );
     typedef array_1d<double, 3 > PlaneArrayType;
@@ -32,7 +33,7 @@ public:
     Umat();
 
     //destructor
-    virtual ~Umat();
+    ~Umat() override;
 
     //clone
     BaseType::Pointer Clone() const final
@@ -41,38 +42,38 @@ public:
         return p_clone;
     }
 
-    size_t WorkingSpaceDimension() final
+    SizeType WorkingSpaceDimension() const final
     {
         return 3;
     }
 
-    size_t GetStrainSize() const final
+    SizeType GetStrainSize() const final
     {
         return 6;
     }
 
     //operators
-    bool Has ( const Variable<double>& rThisVariable ) final
+    bool Has ( const Variable<double>& rThisVariable ) const final
     {
         KRATOS_THROW_ERROR ( std::logic_error, "function Umat::Has(double)", "" );
     }
 
-    bool Has ( const Variable<Vector>& rThisVariable ) final
+    bool Has ( const Variable<Vector>& rThisVariable ) const final
     {
         KRATOS_THROW_ERROR ( std::logic_error, "function Umat::Has(Vector)", "" );
     }
 
-    bool Has ( const Variable<Matrix>& rThisVariable ) final
+    bool Has ( const Variable<Matrix>& rThisVariable ) const final
     {
         KRATOS_THROW_ERROR ( std::logic_error, "function Umat::Has(Matrix)", "" );
     }
 
-    bool Has ( const Variable<PlaneArrayType>& rThisVariable ) final
+    bool Has ( const Variable<PlaneArrayType>& rThisVariable ) const final
     {
         KRATOS_THROW_ERROR ( std::logic_error, "function Umat::Has(2DVector)", "" );
     }
 
-    bool Has ( const Variable<SpaceArrayType>& rThisVariable ) final
+    bool Has ( const Variable<SpaceArrayType>& rThisVariable ) const final
     {
         KRATOS_THROW_ERROR ( std::logic_error, "function Umat::Has(3DVector)", "" );
     }
@@ -143,27 +144,25 @@ public:
         KRATOS_THROW_ERROR ( std::logic_error, "function Umat::SetValue(3DVector)", "" );
     }
 
-    bool ValidateInput ( const Properties& props ) final
+    bool ValidateInput ( const Properties& props ) const final
     {
         KRATOS_THROW_ERROR ( std::logic_error, "function Umat::ValidateInput called", "" );
     }
 
-    StrainMeasure GetStrainMeasure() final
+    StrainMeasure GetStrainMeasure() const final
     {
         return StrainMeasure_Infinitesimal;
     }
 
-    StressMeasure GetStressMeasure() final
+    StressMeasure GetStressMeasure() const final
     {
         return StressMeasure_PK1;
     }
 
-    bool IsIncremental() final
+    bool IsIncremental() const final
     {
         return false;
     }
-
-
 
     //Material parameters inizialization
     void InitializeMaterial ( const Properties& props,

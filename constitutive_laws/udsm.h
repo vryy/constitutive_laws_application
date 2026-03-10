@@ -81,29 +81,29 @@ class UDSM : public ConstitutiveLaw
             return p_clone;
         }
 
-        ConstitutiveLaw::StrainMeasure GetStrainMeasure() override
+        ConstitutiveLaw::StrainMeasure GetStrainMeasure() const override
         {
             return StrainMeasure_Infinitesimal;
         }
 
-        ConstitutiveLaw::StressMeasure GetStressMeasure() override
+        ConstitutiveLaw::StressMeasure GetStressMeasure() const override
         {
             return StressMeasure_Cauchy;
         }
 
-        void GetLawFeatures(Features& rFeatures) override
+        void GetLawFeatures(Features& rFeatures) const override
         {
             rFeatures.SetStrainMeasure(this->GetStrainMeasure());
         }
 
-        bool IsIncremental() override
+        bool IsIncremental() const override
         {
             return true;
         }
 
-        bool Has ( const Variable<double>& rThisVariable ) override;
+        bool Has ( const Variable<double>& rThisVariable ) const override;
 
-        bool Has ( const Variable<Vector>& rThisVariable ) override;
+        bool Has ( const Variable<Vector>& rThisVariable ) const override;
 
         double& GetValue ( const Variable<double>& rThisVariable, double& rValue ) override;
 

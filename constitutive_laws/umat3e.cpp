@@ -43,7 +43,7 @@ int Umat3e::Check( const Kratos::Properties& props, const GeometryType& geom, co
     return 0;
 }
 
-bool Umat3e::Has( const Variable<int>& rThisVariable )
+bool Umat3e::Has( const Variable<int>& rThisVariable ) const
 {
     if(rThisVariable == PARENT_ELEMENT_ID)
         return true;
@@ -58,12 +58,12 @@ bool Umat3e::Has( const Variable<int>& rThisVariable )
     return false;
 }
 
-bool Umat3e::Has( const Variable<double>& rThisVariable )
+bool Umat3e::Has( const Variable<double>& rThisVariable ) const
 {
     return false;
 }
 
-bool Umat3e::Has( const Variable<Vector>& rThisVariable )
+bool Umat3e::Has( const Variable<Vector>& rThisVariable ) const
 {
     if(rThisVariable == INTERNAL_VARIABLES)
         return true;
@@ -76,12 +76,12 @@ bool Umat3e::Has( const Variable<Vector>& rThisVariable )
     return false;
 }
 
-bool Umat3e::Has( const Variable<Matrix>& rThisVariable )
+bool Umat3e::Has( const Variable<Matrix>& rThisVariable ) const
 {
     return false;
 }
 
-// bool Umat3e::Has( const Variable<std::string>& rThisVariable )
+// bool Umat3e::Has( const Variable<std::string>& rThisVariable ) const
 // {
 //     if (rThisVariable == ABAQUS_LIBRARY_NAME)
 //         return true;
@@ -876,7 +876,3 @@ void Umat3e::FinalizeSolutionStep( const Properties& props,
 }
 
 } // Namespace Kratos
-
-#undef DEBUG_UMAT
-#undef DEBUG_ELEMENT_ID
-#undef DEBUG_POINT_ID

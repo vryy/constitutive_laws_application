@@ -65,7 +65,7 @@ int Umat2::Check( const Kratos::Properties& props, const GeometryType& geom, con
     return 0;
 }
 
-bool Umat2::Has( const Variable<int>& rThisVariable )
+bool Umat2::Has( const Variable<int>& rThisVariable ) const
 {
     if(rThisVariable == PARENT_ELEMENT_ID)
         return true;
@@ -74,12 +74,12 @@ bool Umat2::Has( const Variable<int>& rThisVariable )
     return false;
 }
 
-bool Umat2::Has( const Variable<double>& rThisVariable )
+bool Umat2::Has( const Variable<double>& rThisVariable ) const
 {
     return false;
 }
 
-bool Umat2::Has( const Variable<Vector>& rThisVariable )
+bool Umat2::Has( const Variable<Vector>& rThisVariable ) const
 {
     if(rThisVariable == INTERNAL_VARIABLES)
         return true;
@@ -90,7 +90,7 @@ bool Umat2::Has( const Variable<Vector>& rThisVariable )
     return false;
 }
 
-bool Umat2::Has( const Variable<Matrix>& rThisVariable )
+bool Umat2::Has( const Variable<Matrix>& rThisVariable ) const
 {
     return false;
 }

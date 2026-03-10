@@ -7,28 +7,28 @@
 namespace Kratos
 {
 
-bool UDSMe::Has ( const Variable<int>& rThisVariable )
+bool UDSMe::Has ( const Variable<int>& rThisVariable ) const
 {
     if(rThisVariable == SOIL_MODEL_NUMBER)
         return true;
     return false;
 }
 
-bool UDSMe::Has ( const Variable<bool>& rThisVariable )
+bool UDSMe::Has ( const Variable<bool>& rThisVariable ) const
 {
     if(rThisVariable == IS_UNDRAINED)
         return true;
     return false;
 }
 
-bool UDSMe::Has ( const Variable<double>& rThisVariable )
+bool UDSMe::Has ( const Variable<double>& rThisVariable ) const
 {
     if(rThisVariable == BULK_W)
         return true;
     return BaseType::Has( rThisVariable );
 }
 
-bool UDSMe::Has ( const Variable<Vector>& rThisVariable )
+bool UDSMe::Has ( const Variable<Vector>& rThisVariable ) const
 {
     if(rThisVariable == MATERIAL_PARAMETERS)
         return true;

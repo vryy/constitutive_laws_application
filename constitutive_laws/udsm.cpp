@@ -36,14 +36,14 @@ UDSM::~UDSM()
     UserMod = nullptr;
 }
 
-bool UDSM::Has ( const Variable<double>& rThisVariable )
+bool UDSM::Has ( const Variable<double>& rThisVariable ) const
 {
     if(rThisVariable == PLASTICITY_INDICATOR)
         return true;
     return false;
 }
 
-bool UDSM::Has ( const Variable<Vector>& rThisVariable )
+bool UDSM::Has ( const Variable<Vector>& rThisVariable ) const
 {
     if(rThisVariable == INTERNAL_VARIABLES)
         return true;

@@ -82,7 +82,7 @@ int Umat3::Check( const Kratos::Properties& props, const GeometryType& geom, con
     return 0;
 }
 
-bool Umat3::Has( const Variable<int>& rThisVariable )
+bool Umat3::Has( const Variable<int>& rThisVariable ) const
 {
     if(rThisVariable == PARENT_ELEMENT_ID)
         return true;
@@ -91,12 +91,12 @@ bool Umat3::Has( const Variable<int>& rThisVariable )
     return false;
 }
 
-bool Umat3::Has( const Variable<double>& rThisVariable )
+bool Umat3::Has( const Variable<double>& rThisVariable ) const
 {
     return false;
 }
 
-bool Umat3::Has( const Variable<Vector>& rThisVariable )
+bool Umat3::Has( const Variable<Vector>& rThisVariable ) const
 {
     if(rThisVariable == INTERNAL_VARIABLES)
         return true;
@@ -107,7 +107,7 @@ bool Umat3::Has( const Variable<Vector>& rThisVariable )
     return false;
 }
 
-bool Umat3::Has( const Variable<Matrix>& rThisVariable )
+bool Umat3::Has( const Variable<Matrix>& rThisVariable ) const
 {
     if(rThisVariable == CAUCHY_STRESS_TENSOR)
         return true;

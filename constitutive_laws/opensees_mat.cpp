@@ -83,7 +83,7 @@ int OpenSeesMat::Check( const Kratos::Properties& props, const Kratos::Constitut
     return 0;
 }
 
-bool OpenSeesMat::Has( const Kratos::Variable<int>& rThisVariable )
+bool OpenSeesMat::Has( const Kratos::Variable<int>& rThisVariable ) const
 {
     if(rThisVariable == PARENT_ELEMENT_ID)
         return true;
@@ -92,12 +92,12 @@ bool OpenSeesMat::Has( const Kratos::Variable<int>& rThisVariable )
     return false;
 }
 
-bool OpenSeesMat::Has( const Kratos::Variable<double>& rThisVariable )
+bool OpenSeesMat::Has( const Kratos::Variable<double>& rThisVariable ) const
 {
     return false;
 }
 
-bool OpenSeesMat::Has( const Kratos::Variable<Vector>& rThisVariable )
+bool OpenSeesMat::Has( const Kratos::Variable<Vector>& rThisVariable ) const
 {
     if(rThisVariable == INTERNAL_VARIABLES)
         return true;
@@ -108,7 +108,7 @@ bool OpenSeesMat::Has( const Kratos::Variable<Vector>& rThisVariable )
     return false;
 }
 
-bool OpenSeesMat::Has( const Kratos::Variable<Matrix>& rThisVariable )
+bool OpenSeesMat::Has( const Kratos::Variable<Matrix>& rThisVariable ) const
 {
     return false;
 }

@@ -142,12 +142,13 @@ public:
 
     // Type Definitions
     typedef ConstitutiveLaw BaseType;
+    typedef BaseType::SizeType SizeType;
 
     // Default constructor
     OpenSeesMat();
 
     // Destructor
-    virtual ~OpenSeesMat();
+    ~OpenSeesMat() override;
 
     //clone
     BaseType::Pointer Clone() const final
@@ -156,38 +157,38 @@ public:
         return p_clone;
     }
 
-    size_t WorkingSpaceDimension() final
+    SizeType WorkingSpaceDimension() const final
     {
         return 3;
     }
 
-    size_t GetStrainSize() const final
+    SizeType GetStrainSize() const final
     {
         return 6;
     }
 
-    StrainMeasure GetStrainMeasure() final
+    StrainMeasure GetStrainMeasure() const final
     {
         return StrainMeasure_Infinitesimal;
     }
 
-    StressMeasure GetStressMeasure() final
+    StressMeasure GetStressMeasure() const final
     {
         return StressMeasure_PK1;
     }
 
-    bool IsIncremental() final
+    bool IsIncremental() const final
     {
         return false;
     }
 
-    bool Has ( const Variable<int>& rThisVariable ) final;
+    bool Has ( const Variable<int>& rThisVariable ) const final;
 
-    bool Has ( const Variable<double>& rThisVariable ) final;
+    bool Has ( const Variable<double>& rThisVariable ) const final;
 
-    bool Has ( const Variable<Vector>& rThisVariable ) final;
+    bool Has ( const Variable<Vector>& rThisVariable ) const final;
 
-    bool Has ( const Variable<Matrix>& rThisVariable ) final;
+    bool Has ( const Variable<Matrix>& rThisVariable ) const final;
 
     int& GetValue ( const Variable<int>& rThisVariable, int& rValue ) final;
 
@@ -205,7 +206,7 @@ public:
 
     void SetValue( const Variable<Matrix>& rVariable, const Matrix& rValue, const ProcessInfo& rCurrentProcessInfo) final;
 
-    bool ValidateInput ( const Properties& props ) final
+    bool ValidateInput ( const Properties& props ) const final
     {
         KRATOS_THROW_ERROR ( std::logic_error, "function OpenSeesMat::ValidateInput called", "" );
     }
@@ -285,4 +286,3 @@ private:
 }  // namespace Kratos.
 
 #endif // KRATOS_OpenSeesMat_H_INCLUDED  defined
-
